@@ -1,0 +1,282 @@
+{% extends "panel/base.html" %}
+{% load panel_tags %}
+{% block title %}{{ customer.name }} | پرونده مشتری{% endblock %}
+{% block head %}
+<style>
+  #profileBox summary::-webkit-details-marker,
+  #dealsBox summary::-webkit-details-marker { display: none; }
+  #profileBox summary,
+  #dealsBox summary { list-style: none; }
+  #profileBox .chev,
+  #dealsBox .chev { transition: transform .15s ease; }
+  #profileBox details[open] .chev,
+  #dealsBox details[open] .chev { transform: rotate(180deg); }
+</style>
+{% endblock %}
+{% block content %}
+<header class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="text-[19px] font-extrabold text-primary-hover">پرونده {{ customer.name }}</h1>
+  <div class="flex flex-wrap gap-2">
+    <a class="btn btn-amber" href="{% url 'customers' %}">بازگشت به لیست</a>
+    <a class="btn btn-green" href="{% url 'request_new' %}?customer={{ customer.pk }}">ثبت معامله</a>
+  </div>
+</header>
+
+<section class="overflow-hidden rounded-card border border-line bg-white shadow-card">
+  <div class="h-24 bg-gradient-to-l from-cyan-700 to-ink"></div>
+  <div class="px-6 pb-6">
+    <div class="-mt-8 flex flex-wrap items-end justify-between gap-3">
+      <div class="flex items-end gap-3">
+        <div class="grid h-16 w-16 place-items-center rounded-2xl border-4 border-white bg-primary text-2xl font-black text-white">{{ customer.name|truncatechars:1 }}</div>
+        <div>
+          <h2 class="text-2xl font-black">{{ customer.name }}</h2>
+          <p class="text-sm font-semibold text-muted">{{ customer.customer_type|default:"—" }} · {{ customer.city|default:"شهر ثبت نشده" }} · {{ customer.phone|default:"بدون شماره" }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+  <article class="card p-4"><div class="text-xs font-bold text-muted">مجموع خرید</div><b class="mt-1 block text-lg" dir="ltr">{{ sales|toman }}</b></article>
+  <article class="card p-4"><div class="text-xs font-bold text-muted">وصول‌شده</div><b class="mt-1 block text-lg" dir="ltr">{{ received|toman }}</b></article>
+  <article class="card p-4"><div class="text-xs font-bold text-muted">مانده</div><b class="mt-1 block text-lg text-rose-600" dir="ltr">{{ debt|toman }}</b></article>
+  <article class="card p-4"><div class="text-xs font-bold text-muted">تکمیل پرونده</div><b class="mt-1 block text-lg">{{ percent|fa }}٪</b><div class="mt-2 h-2 rounded-full bg-slate-100"><span class="block h-full rounded-full bg-primary" style="width: {{ percent }}%"></span></div></article>
+</section>
+
+<section class="card mt-5 p-6" id="complete">
+  <h3 class="text-lg font-extrabold">تکمیل پروفایل</h3>
+  <p class="mt-1 text-sm font-semibold text-muted">هرچه کامل‌تر، تصمیم فروش و اعتبارسنجی دقیق‌تر. این پرونده روی شیت نوشته نمی‌شود.</p>
+  {% if missing %}
+  <div class="mt-3 flex flex-wrap gap-2">{% for item in missing %}<span class="pill bg-amber-50 text-amber-800">بعدی: {{ item }}</span>{% endfor %}</div>
+  {% else %}<p class="mt-3 text-sm font-bold text-emerald-700">موارد سنگین پرونده پر شده‌اند.</p>{% endif %}
+</section>
+
+<section class="card mt-5 p-4 sm:p-5">
+  <div class="mb-3 flex flex-wrap items-start justify-between gap-2">
+    <div>
+      <h3 class="text-lg font-extrabold">اطلاعات مشتری</h3>
+      <p class="mt-1 text-xs font-semibold text-muted">همان بخش‌های اعلام فروش. هر بخش جدا باز می‌شود.</p>
+    </div>
+    <div class="flex gap-2">
+      <button type="button" class="btn btn-outline !min-h-9 !px-3 !py-1.5 text-xs" id="openProfile">باز کردن بخش‌ها</button>
+      <button type="button" class="btn btn-outline !min-h-9 !px-3 !py-1.5 text-xs" id="closeProfile">جمع کردن بخش‌ها</button>
+    </div>
+  </div>
+  {% if can_edit_dossier %}
+  <form method="post" action="{% url 'customer_dossier' customer.pk %}">
+    {% csrf_token %}
+  {% else %}
+  <p class="mb-3 text-xs font-semibold text-muted">ویرایش این بخش‌ها فقط برای مدیر است.</p>
+  {% endif %}
+    <div id="profileBox" class="space-y-2">
+      <details class="rounded-2xl border border-line" open>
+        <summary class="flex cursor-pointer items-center justify-between gap-3 px-3 py-3 sm:px-4">
+          <span class="min-w-0">
+            <span class="block font-extrabold">مشتری</span>
+            <span class="mt-0.5 block text-xs font-semibold text-muted">نوع، تماس، شهر و نشانی</span>
+          </span>
+          <span class="flex shrink-0 items-center gap-2">
+            <span data-fill class="pill {% if contact_filled %}bg-emerald-50 text-emerald-700{% else %}bg-slate-100 text-slate-600{% endif %}">{% if contact_filled %}{{ contact_filled|fa }} پر شده{% else %}۴ فیلد{% endif %}</span>
+            <svg class="chev h-4 w-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"></path></svg>
+          </span>
+        </summary>
+        <div class="grid gap-3 border-t border-line p-3 sm:p-4 md:grid-cols-2">
+          {% if can_edit_dossier %}
+          <div>
+            <label class="label">شماره تماس</label>
+            <input name="phone" value="{{ customer.phone }}" class="field" dir="ltr" placeholder="09121234567">
+          </div>
+          <div>
+            <label class="label">نوع مشتری</label>
+            <select name="customer_type" class="field">
+              <option value="">—</option>
+              {% for item in cust_types %}<option {% if customer.customer_type == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="label">شهر / استان</label>
+            <input name="city" value="{{ customer.city }}" class="field">
+          </div>
+          <div class="md:col-span-2">
+            <label class="label">آدرس</label>
+            <textarea name="address" class="field" rows="2">{{ customer.address }}</textarea>
+          </div>
+          {% else %}
+          <div class="rounded-xl bg-canvas px-3 py-2"><div class="text-[11px] font-bold text-muted">شماره تماس</div><div class="mt-1 text-sm font-extrabold" dir="ltr">{{ customer.phone|default:"—" }}</div></div>
+          <div class="rounded-xl bg-canvas px-3 py-2"><div class="text-[11px] font-bold text-muted">نوع مشتری</div><div class="mt-1 text-sm font-extrabold">{{ customer.customer_type|default:"—" }}</div></div>
+          <div class="rounded-xl bg-canvas px-3 py-2"><div class="text-[11px] font-bold text-muted">شهر / استان</div><div class="mt-1 text-sm font-extrabold">{{ customer.city|default:"—" }}</div></div>
+          <div class="rounded-xl bg-canvas px-3 py-2 md:col-span-2"><div class="text-[11px] font-bold text-muted">آدرس</div><div class="mt-1 text-sm font-extrabold">{{ customer.address|default:"—" }}</div></div>
+          {% endif %}
+        </div>
+      </details>
+
+      {% for group in sections %}
+      <details data-group="{{ group.k }}" class="rounded-2xl border border-line" {% if group.filled %}open{% endif %}>
+        <summary class="flex cursor-pointer items-center justify-between gap-3 px-3 py-3 sm:px-4">
+          <span class="min-w-0">
+            <span class="block font-extrabold">{{ group.t }}</span>
+            <span class="mt-0.5 block text-xs font-semibold text-muted">{{ group.d }}</span>
+          </span>
+          <span class="flex shrink-0 items-center gap-2">
+            <span data-fill class="pill {% if group.filled %}bg-emerald-50 text-emerald-700{% else %}bg-slate-100 text-slate-600{% endif %}">{% if group.filled %}{{ group.filled|fa }} پر شده{% else %}{{ group.total|fa }} فیلد{% endif %}</span>
+            <svg class="chev h-4 w-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"></path></svg>
+          </span>
+        </summary>
+        <div class="grid gap-3 border-t border-line p-3 sm:p-4 md:grid-cols-2">
+          {% for field in group.fields %}
+          <div class="{% if field.wide %}md:col-span-2{% endif %}">
+            {% if can_edit_dossier %}
+            <label class="label">{{ field.t }}</label>
+            {% if field.type == 'select' %}
+            <select name="d_{{ field.k }}" class="field"><option value="">—</option>{% for opt in field.opts %}<option value="{{ opt }}" {% if field.value == opt %}selected{% endif %}>{{ opt }}</option>{% endfor %}</select>
+            {% elif field.type == 'textarea' %}
+            <textarea name="d_{{ field.k }}" class="field" rows="2">{{ field.value }}</textarea>
+            {% else %}
+            <input name="d_{{ field.k }}" value="{{ field.value }}" class="field{% if field.type == 'date' %} cursor-pointer{% endif %}" {% if field.type == 'date' %}data-jdate readonly placeholder="۱۴۰۵/۰۶/۱۲"{% else %}placeholder="{{ field.ph }}"{% endif %} {% if field.k == 'mainBank' %}list="bankList"{% endif %} {% if field.type == 'digits' or field.type == 'money' or field.type == 'int' or field.type == 'email' %}dir="ltr"{% endif %}>
+            {% endif %}
+            {% if field.hint %}<span class="mt-1 block text-[11px] text-muted">{{ field.hint }}</span>{% endif %}
+            {% else %}
+            <div class="rounded-xl bg-canvas px-3 py-2">
+              <div class="text-[11px] font-bold text-muted">{{ field.t }}</div>
+              <div class="mt-1 text-sm font-extrabold" {% if field.type == 'digits' or field.type == 'money' or field.type == 'int' or field.type == 'email' %}dir="ltr"{% endif %}>{{ field.value|default:"—" }}</div>
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </details>
+      {% endfor %}
+    </div>
+  {% if can_edit_dossier %}
+    <datalist id="bankList">{% for bank in banks %}<option value="{{ bank }}"></option>{% endfor %}</datalist>
+    <div class="mt-4"><button class="btn btn-primary" type="submit">ذخیره پرونده</button></div>
+  </form>
+  {% endif %}
+</section>
+
+<section class="card mt-5 p-6">
+  <div class="mb-3 flex items-center justify-between"><h3 class="text-lg font-extrabold">معاملات و تراکنش‌ها</h3><span class="text-sm text-muted">{{ invoices|length|fa }} فاکتور</span></div>
+  <div id="dealsBox" class="space-y-3">
+    {% for inv in invoices %}
+    <details class="rounded-2xl border border-line">
+      <summary class="cursor-pointer p-4 transition hover:bg-slate-50">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <strong dir="ltr">{{ inv.number }}</strong>
+          <span class="flex items-center gap-2">
+            <span class="pill bg-slate-100">{{ inv.settlement }} · {{ inv.status }}</span>
+            <svg class="chev h-4 w-4 shrink-0 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"></path></svg>
+          </span>
+        </div>
+        <div class="mt-2 grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
+          <div>تاریخ {{ inv.sold_on|jdate }}</div>
+          <div dir="ltr">فروش {{ inv.sale_amount|toman }}</div>
+          <div dir="ltr">سود {{ inv.profit|toman }}</div>
+          <div>کارشناس {{ inv.expert_label }}</div>
+        </div>
+        {% if inv.note %}<p class="mt-2 text-sm text-muted">{{ inv.note }}</p>{% endif %}
+      </summary>
+      <div class="border-t border-line px-4 py-3">
+        <p class="mb-2 text-xs font-extrabold text-muted">اقلام فاکتور{% if inv.item_rows %} · {{ inv.item_rows|length|fa }} قلم{% endif %}</p>
+        {% for item in inv.item_rows %}
+        <div class="rounded-xl bg-canvas px-3 py-3 {% if not forloop.first %}mt-2{% endif %}">
+          <div class="mb-2 text-sm font-extrabold">{{ forloop.counter|fa }}. {{ item.product }}</div>
+          <dl class="grid grid-cols-2 gap-x-3 gap-y-2 text-sm sm:grid-cols-3">
+            <div>
+              <dt class="text-[11px] font-bold text-muted">تعداد</dt>
+              <dd class="mt-0.5 font-extrabold">{{ item.qty|fa }}</dd>
+            </div>
+            <div>
+              <dt class="text-[11px] font-bold text-muted">قیمت واحد</dt>
+              <dd class="mt-0.5 font-extrabold">{{ item.unit_price|toman }}</dd>
+            </div>
+            <div>
+              <dt class="text-[11px] font-bold text-muted">مبلغ</dt>
+              <dd class="mt-0.5 font-extrabold">{{ item.amount|toman }}</dd>
+            </div>
+          </dl>
+        </div>
+        {% empty %}
+        <p class="mb-3 text-sm font-semibold text-muted">قلمی برای این فاکتور ثبت نشده است.</p>
+        {% endfor %}
+        <p class="mb-2 mt-4 text-xs font-extrabold text-muted">اقساط{% if inv.installment_rows %} · {{ inv.installment_rows|length|fa }} مورد{% endif %}</p>
+        {% for row in inv.installment_rows %}
+        <div class="rounded-xl bg-canvas px-3 py-3 {% if not forloop.first %}mt-2{% endif %}">
+          <div class="mb-2 flex items-center justify-between gap-2">
+            <span class="text-sm font-extrabold">{{ forloop.counter|fa }}. {{ row.title }}</span>
+            <span class="pill {{ row.tone }}">{{ row.status }}</span>
+          </div>
+          <dl class="grid grid-cols-2 gap-x-3 gap-y-2 text-sm sm:grid-cols-4">
+            <div>
+              <dt class="text-[11px] font-bold text-muted">تاریخ قسط</dt>
+              <dd class="mt-0.5 font-extrabold">{{ row.due|jdate }}</dd>
+            </div>
+            <div>
+              <dt class="text-[11px] font-bold text-muted">مبلغ قسط</dt>
+              <dd class="mt-0.5 font-extrabold">{{ row.amount|toman }}</dd>
+            </div>
+            <div>
+              <dt class="text-[11px] font-bold text-muted">تاریخ وصول</dt>
+              <dd class="mt-0.5 font-extrabold">{{ row.collected_on|jdate }}</dd>
+            </div>
+            <div>
+              <dt class="text-[11px] font-bold text-muted">وضعیت وصول</dt>
+              <dd class="mt-0.5 font-extrabold">{{ row.status }}</dd>
+            </div>
+          </dl>
+        </div>
+        {% empty %}
+        <p class="text-sm font-semibold text-muted">قسط یا پرداختی برای این معامله ثبت نشده است.</p>
+        {% endfor %}
+      </div>
+    </details>
+    {% empty %}<p class="text-sm text-muted">هنوز معامله‌ای ثبت نشده است.</p>{% endfor %}
+  </div>
+</section>
+
+<section class="card mt-5 p-6">
+  <h3 class="text-lg font-extrabold">اسناد و مدارک</h3>
+  <div class="grid gap-3 md:grid-cols-3">
+    <form method="post" action="{% url 'customer_upload' customer.pk %}" enctype="multipart/form-data" class="rounded-2xl border border-dashed border-line p-4 text-center">{% csrf_token %}<input type="hidden" name="doc_type" value="کارت ملی"><div class="mb-2 text-sm font-bold">آپلود کارت ملی</div><input type="file" name="file" accept=".jpg,.jpeg,.png,.pdf" class="text-xs"><button class="btn btn-outline mt-3" type="submit">بارگذاری</button></form>
+    <form method="post" action="{% url 'customer_upload' customer.pk %}" enctype="multipart/form-data" class="rounded-2xl border border-dashed border-line p-4 text-center">{% csrf_token %}<input type="hidden" name="doc_type" value="فرم اعتبارسنجی"><div class="mb-2 text-sm font-bold">فرم اعتبارسنجی</div><input type="file" name="file" accept=".pdf,.jpg,.png" class="text-xs"><button class="btn btn-outline mt-3" type="submit">بارگذاری</button></form>
+    <form method="post" action="{% url 'customer_upload' customer.pk %}" enctype="multipart/form-data" class="rounded-2xl border border-dashed border-line p-4 text-center">{% csrf_token %}<input type="hidden" name="doc_type" value="سایر مدارک"><div class="mb-2 text-sm font-bold">سایر مدارک</div><input type="file" name="file" class="text-xs"><button class="btn btn-outline mt-3" type="submit">بارگذاری</button></form>
+  </div>
+  <ul class="mt-4 space-y-2 text-sm">
+    {% for doc in documents %}<li><a class="font-bold text-primary" href="{{ doc.file.url }}">{{ doc.doc_type }}</a> <span class="text-muted">{{ doc.uploaded_at|jdate }}</span></li>{% empty %}<li class="text-muted">مدرکی پیوست نشده.</li>{% endfor %}
+  </ul>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+function faCount(n) {
+  return String(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
+}
+
+function refreshProfile() {
+  document.querySelectorAll('#profileBox details').forEach((det) => {
+    const fields = [...det.querySelectorAll('input, select, textarea')].filter((el) => el.type !== 'hidden');
+    if (!fields.length) return;
+    const n = fields.filter((el) => (el.value || '').trim()).length;
+    const badge = det.querySelector('[data-fill]');
+    if (!badge) return;
+    badge.textContent = n ? faCount(n) + ' پر شده' : faCount(fields.length) + ' فیلد';
+    badge.classList.toggle('bg-emerald-50', n > 0);
+    badge.classList.toggle('text-emerald-700', n > 0);
+    badge.classList.toggle('bg-slate-100', n === 0);
+    badge.classList.toggle('text-slate-600', n === 0);
+  });
+}
+
+document.getElementById('openProfile').addEventListener('click', () => {
+  document.querySelectorAll('#profileBox details').forEach((el) => { el.open = true; });
+});
+document.getElementById('closeProfile').addEventListener('click', () => {
+  document.querySelectorAll('#profileBox details').forEach((el) => { el.open = false; });
+});
+const profileForm = document.querySelector('#profileBox')?.closest('form');
+if (profileForm) {
+  profileForm.addEventListener('input', refreshProfile);
+  profileForm.addEventListener('change', refreshProfile);
+}
+</script>
+{% endblock %}

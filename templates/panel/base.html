@@ -1,0 +1,37 @@
+{% load static panel_tags %}
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f172a">
+  <title>{% block title %}کشت‌یار{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'panel/app.css' %}">
+  {% block head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-canvas font-vazir text-ink antialiased">
+  {% block body %}
+  <div class="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_90%_0,rgba(14,116,144,0.06),transparent_32%)]"></div>
+  {% if user.is_authenticated %}
+    {% include "panel/partials/nav.html" %}
+  {% endif %}
+  <div class="relative mx-auto w-[min(1450px,calc(100%-1.5rem))] pb-12 pt-6">
+    {% block content %}{% endblock %}
+  </div>
+  {% endblock %}
+
+  <div class="pointer-events-none fixed bottom-6 left-1/2 z-[80] flex -translate-x-1/2 flex-col items-center gap-2">
+    {% for message in messages %}
+      <div class="pointer-events-auto rounded-xl px-5 py-3 text-[13px] font-bold text-white shadow-xl {% if message.tags == 'error' %}bg-red-900{% else %}bg-emerald-900{% endif %}" style="animation: toast-in .3s ease">{{ message }}</div>
+    {% endfor %}
+  </div>
+  <script src="{% static 'panel/jalali-date.js' %}"></script>
+  <script>
+    document.getElementById('moneyUnit')?.addEventListener('change', function () {
+      document.cookie = 'money_unit=' + this.value + ';path=/;max-age=31536000;SameSite=Lax';
+      location.reload();
+    });
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

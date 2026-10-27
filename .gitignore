@@ -1,0 +1,8 @@
+node_modules/
+staticfiles/
+__pycache__/
+*.py[cod]
+.env
+db.sqlite3
+db.sqlite3-journal
+media/

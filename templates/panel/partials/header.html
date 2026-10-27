@@ -1,0 +1,14 @@
+<header class="sticky top-3 z-30 mb-5 flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-white px-6 py-4 shadow-sm">
+  <h1 class="flex items-center gap-3 text-[19px] font-extrabold text-primary-hover">
+    <span class="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary to-primary-hover text-white shadow-lg shadow-cyan-900/30">
+      {% block header_icon %}{% endblock %}
+    </span>
+    <span class="flex flex-col gap-0.5">
+      <span>{% block header_title %}{% endblock %}</span>
+      {% block header_sub %}{% endblock %}
+    </span>
+  </h1>
+  <div class="flex flex-wrap items-center gap-2.5">
+    {% block header_actions %}{% endblock %}
+  </div>
+</header>

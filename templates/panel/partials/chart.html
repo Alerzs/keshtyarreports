@@ -1,0 +1,43 @@
+<article class="card flex flex-col p-5 {{ span }}" data-chart="{{ chart_id }}">
+  <div class="mb-3 flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0">
+      <h2 class="text-base font-extrabold text-ink">{{ title }}</h2>
+      {% if subtitle %}<p class="mt-1 text-[12.5px] font-semibold text-muted">{{ subtitle }}</p>{% endif %}
+    </div>
+    {% if layout != "calendar" %}
+    <div class="chart-span" role="group" aria-label="بازه زمانی {{ title }}">
+      <label class="chart-span-field">
+        <span>از</span>
+        <select data-from aria-label="از ماه {{ title }}">
+          {% for item in period_months reversed %}
+          <option value="{{ item.key }}" {% if forloop.first %}selected{% endif %}>{{ item.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="chart-span-field">
+        <span>تا</span>
+        <select data-to aria-label="تا ماه {{ title }}">
+          {% for item in period_months reversed %}
+          <option value="{{ item.key }}" {% if forloop.last %}selected{% endif %}>{{ item.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+    {% endif %}
+  </div>
+  {% if layout == "calendar" %}
+  <div id="{{ chart_id }}"></div>
+  {% elif layout == "share" %}
+  <div class="{{ box|default:'h-[300px]' }} flex items-center gap-4">
+    <ul class="chart-share" data-share></ul>
+    <div class="relative h-full w-[42%] max-w-[220px] shrink-0"><canvas id="{{ chart_id }}"></canvas></div>
+  </div>
+  {% else %}
+  <div class="{{ box|default:'h-[300px]' }}"><canvas id="{{ chart_id }}"></canvas></div>
+  {% endif %}
+  {% if hint %}
+  <p class="chart-hint">{{ hint }}</p>
+  {% elif click_customers %}
+  <p class="chart-hint">روی هر بخش بزنید تا مشتریان همان بخش در صفحه‌ی جدا باز شوند.</p>
+  {% endif %}
+</article>

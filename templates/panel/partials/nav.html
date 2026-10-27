@@ -1,0 +1,97 @@
+{% with name=request.resolver_match.url_name %}
+<header class="sticky top-0 z-50 border-b border-line bg-white/95 backdrop-blur">
+  <div class="mx-auto w-[min(1450px,calc(100%-1.5rem))]">
+    <div class="flex items-center justify-between gap-3 pt-2.5">
+    <a href="{% url 'dashboard' %}" class="flex shrink-0 items-center gap-2.5 rounded-xl py-1">
+      <span class="grid h-9 w-9 place-items-center rounded-xl bg-ink text-white">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2.4"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+      </span>
+      <span class="leading-tight">
+        <span class="block text-sm font-black text-ink">کشت‌یار</span>
+        <span class="block text-[11px] font-semibold text-muted">{{ crm_role_label }}</span>
+      </span>
+    </a>
+    <div class="flex shrink-0 items-center gap-2">
+      <label class="flex items-center gap-1.5 text-[11px] font-extrabold text-muted">
+        واحد
+        <select id="moneyUnit" class="field !min-h-9 !w-auto !rounded-lg !px-2 !py-1 text-xs font-extrabold text-ink" aria-label="واحد مبلغ جدول‌ها و نمودارها">
+          <option value="auto" {% if money_unit != 'million' and money_unit != 'billion' %}selected{% endif %}>خودکار</option>
+          <option value="million" {% if money_unit == 'million' %}selected{% endif %}>میلیون</option>
+          <option value="billion" {% if money_unit == 'billion' %}selected{% endif %}>میلیارد</option>
+        </select>
+      </label>
+      <span class="max-w-[9rem] truncate text-xs font-bold text-muted" dir="ltr">{{ user.username }}</span>
+      <a href="{% url 'logout' %}" class="btn btn-danger !min-h-9 !rounded-lg !px-3 !py-1.5">خروج</a>
+    </div>
+    </div>
+    <nav class="mt-1 flex flex-wrap gap-1 pb-2.5" aria-label="بخش‌های سامانه">
+      {% if 'dashboard' in crm_pages and 'overview' in crm_tabs %}
+      <a href="{% if name == 'dashboard' %}?tab=overview&range={{ range_key|default:'all' }}&person={{ person|urlencode }}&month={{ month|default:'all' }}&tmonth={{ team_month|default:'all' }}{% else %}{% url 'dashboard' %}?tab=overview{% endif %}" class="nav-link {% if name == 'dashboard' and tab == 'overview' %}is-active{% endif %}">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+        نمای کلی
+      </a>
+      {% endif %}
+            {% if 'requests' in crm_pages %}
+      <a href="{% url 'requests' %}" class="nav-link {% if name == 'requests' or name == 'request_new' or name == 'request_detail' or name == 'request_edit' or name == 'request_review' %}is-active{% endif %}">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+        اعلام فروش
+      </a>
+      {% endif %}
+      {% if 'dashboard' in crm_pages and 'team' in crm_tabs %}
+      <a href="{% if name == 'dashboard' %}?tab=team&range={{ range_key|default:'all' }}&month={{ month|default:'all' }}&tmonth={{ team_month|default:'all' }}{% else %}{% url 'dashboard' %}?tab=team{% endif %}" class="nav-link {% if name == 'dashboard' and tab == 'team' %}is-active{% endif %}">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        تیم
+      </a>
+      {% endif %}
+            {% if 'dashboard' in crm_pages and 'specialist' in crm_tabs %}
+      <a href="{% if name == 'dashboard' %}?tab=specialist&range={{ range_key|default:'all' }}&person={{ person|urlencode }}&month={{ month|default:'all' }}{% else %}{% url 'dashboard' %}?tab=specialist{% endif %}" class="nav-link {% if name == 'dashboard' and tab == 'specialist' %}is-active{% endif %}">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        کارشناس
+      </a>
+      {% endif %}
+      {% if 'customers' in crm_pages %}
+      <a href="{% url 'customers' %}" class="nav-link {% if 'customer' in name %}is-active{% endif %}">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        مشتریان
+      </a>
+      {% endif %}
+      {% if 'sales' in crm_pages %}
+      <a href="{% url 'sales' %}" class="nav-link {% if name == 'sales' or name == 'sale_detail' %}is-active{% endif %}">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg>
+        فروش‌ها
+      </a>
+      {% endif %}
+      {% if 'dashboard' in crm_pages and 'finance' in crm_tabs %}
+      <a href="{% if name == 'dashboard' %}?tab=finance&range={{ range_key|default:'all' }}&person={{ person|urlencode }}&month={{ month|default:'all' }}&tmonth={{ team_month|default:'all' }}{% else %}{% url 'dashboard' %}?tab=finance{% endif %}" class="nav-link {% if name == 'dashboard' and tab == 'finance' %}is-active{% endif %}">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+        چک و وصول
+      </a>
+      {% endif %}
+      {% if 'commissions' in crm_pages %}
+      <a href="{% url 'commissions' %}" class="nav-link {% if name == 'commissions' %}is-active{% endif %}">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><line x1="19" y1="5" x2="5" y2="19"></line><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle></svg>
+        پورسانت‌ها
+      </a>
+      {% endif %}
+      {% if 'users' in crm_pages %}
+      <a href="{% url 'users' %}" class="nav-link {% if name == 'users' or 'user_' in name %}is-active{% endif %}">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
+        کاربران
+      </a>
+      {% endif %}
+      {% if 'edit' in crm_pages %}
+      <a href="{% url 'edit' %}" class="nav-link {% if name == 'edit' or name == 'edit_customer' or name == 'edit_invoice' or name == 'edit_payment' or name == 'edit_check' %}is-active{% endif %}">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        ویرایش
+      </a>
+      {% endif %}
+      {% if 'backups' in crm_pages %}
+      <a href="{% url 'backups' %}" class="nav-link {% if 'backup' in name %}is-active{% endif %}">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        مدیریت داده
+      </a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+{% endwith %}

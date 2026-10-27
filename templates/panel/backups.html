@@ -1,0 +1,70 @@
+{% extends "panel/base.html" %}
+{% load panel_tags %}
+{% block title %}مدیریت داده | کشت‌یار{% endblock %}
+{% block content %}
+<header class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="flex items-center gap-3 text-lg font-extrabold text-primary-hover">
+    <span class="grid h-[42px] w-[42px] place-items-center rounded-xl bg-gradient-to-br from-primary to-primary-hover text-white"><svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7"></path><polyline points="3 7 12 3 21 7"></polyline></svg></span>
+    مدیریت داده
+  </h1>
+  <div class="flex gap-2">
+    <form method="post" action="{% url 'backup_snapshot' %}">{% csrf_token %}<button class="btn btn-primary" type="submit">پشتیبان دستی</button></form>
+  </div>
+</header>
+<div class="mb-4 flex gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900">
+  <span>✓</span>
+  <div><b>پشتیبان‌ها در پایگاه داده است:</b> <code class="rounded bg-white px-1">{{ data_dir }}</code><br>نسخه‌های پشتیبان جدا از فایل اکسل نگه داشته می‌شوند. ورود اکسل فقط از بخش زیر انجام می‌شود.</div>
+</div>
+<section class="card mb-4 p-5">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <h2 class="font-extrabold">ورود و خروجی اکسل</h2>
+      <p class="mt-2 max-w-3xl text-sm leading-7 text-muted">قالب همان فایل فروش است و این شیت‌ها را دارد: Sales، Customers، Sale_Items، Payments، Checks و Commissions. ردیف‌های تازه به داده‌های فعلی اضافه می‌شوند. اگر شماره فاکتور از قبل باشد، همان فاکتور به‌روز می‌شود و اقلام، پرداخت و چک همان فاکتور از فایل جایگزین می‌شود. فیلدهای پرشده‌ی مشتری دست نمی‌خورند. الان {{ excel_invoices|fa }} فاکتور و {{ excel_customers|fa }} مشتری در سامانه است.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a class="btn btn-outline" href="{% url 'backup_excel_template' %}">دانلود قالب خالی</a>
+      <a class="btn btn-primary" href="{% url 'backup_excel_export' %}">خروجی اکسل</a>
+    </div>
+  </div>
+  <form method="post" action="{% url 'backup_excel_import' %}" enctype="multipart/form-data" class="mt-4 flex flex-wrap items-end gap-3" onsubmit="return confirm('ردیف‌های این فایل به داده‌های فعلی اضافه شود؟ فاکتورهای هم‌شماره به‌روز می‌شوند.')">
+    {% csrf_token %}
+    <div class="min-w-[16rem] flex-1">
+      <label class="label" for="workbook">فایل اکسل</label>
+      <input id="workbook" class="field" type="file" name="workbook" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+    </div>
+    <button class="btn btn-green" type="submit">افزودن از اکسل</button>
+  </form>
+</section>
+<section class="card mb-4 p-5">
+  <h2 class="font-extrabold">پشتیبان و بازیابی</h2>
+  <p class="mt-2 text-sm leading-7 text-muted">پشت هر تغییری در کاربران، درخواست‌ها یا پرونده‌ی مشتریان یک نسخه بایگانی می‌شود. هر نسخه یک شماره‌ی پیاپی دارد. از هر بخش حداکثر ۱۵ نسخه نگه داشته می‌شود و نسخه‌های قدیمی‌تر حذف می‌شوند. دکمه‌ی بازگردانی وضعیت فعلی را هم قبل از جایگزینی نگه می‌دارد، پس خودش برگشت‌پذیر است.</p>
+</section>
+{% for section in sections %}
+<section class="card mb-4 p-5">
+  <h2 class="mb-3 font-extrabold">{{ section.title }}</h2>
+  <div class="mb-3 flex flex-wrap gap-4 text-sm">
+    <span>نسخه‌ی فعلی: <b class="pill bg-primary-soft text-primary">r{{ section.live_rev|fa }}</b></span>
+    <span>آخرین تغییر: <b>{{ section.live_at }}</b></span>
+    <span>محتوا: <b>{{ section.summary }}</b></span>
+  </div>
+  {% if section.rows %}
+  <table class="w-full text-sm">
+    <thead class="text-muted"><tr><th class="py-2 text-right">نسخه</th><th class="text-right">زمان</th><th class="text-right">محتوا</th><th></th></tr></thead>
+    <tbody>
+      {% for row in section.rows %}
+      <tr class="border-t border-line">
+        <td class="py-2"><span class="pill {% if forloop.first %}bg-primary text-white{% else %}bg-slate-100{% endif %}">r{{ row.rev|fa }}</span></td>
+        <td>{{ row.created_at|jdt }}</td>
+        <td>{{ row.summary }}</td>
+        <td class="text-left">
+          <form class="inline" method="post" action="{% url 'backup_restore' row.pk %}" onsubmit="return confirm('وضعیت فعلی با این نسخه جایگزین شود؟ وضعیت فعلی هم قبلش پشتیبان می‌شود.')">{% csrf_token %}<button class="btn btn-outline" type="submit">بازگردانی</button></form>
+          <a class="btn btn-outline" href="{% url 'backup_download' row.pk %}">دانلود</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="text-sm text-muted">هنوز پشتیبانی ساخته نشده. اولین نسخه با اولین تغییر — یا با دکمه‌ی «پشتیبان دستی» — ساخته می‌شود.</p>{% endif %}
+</section>
+{% endfor %}
+{% endblock %}

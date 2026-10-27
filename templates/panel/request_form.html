@@ -1,0 +1,994 @@
+{% extends "panel/base.html" %}
+{% load panel_tags %}
+{% block title %}ثبت فروش | کشت‌یار{% endblock %}
+{% block head %}
+<style>
+  #saleForm .field { padding-top: .55rem; padding-bottom: .55rem; }
+  #saleForm .label { margin-bottom: .3rem; font-size: 12px; }
+  #saleForm summary::-webkit-details-marker { display: none; }
+  #saleForm summary { list-style: none; }
+  #saleForm .chev { transition: transform .15s ease; }
+  #saleForm details[open] .chev { transform: rotate(180deg); }
+  #saleForm .step-btn.is-on { background: #f0f9ff; color: #0e7490; }
+  #saleForm .is-gap { border-color: #f87171; background: #fff1f2; }
+  #saleForm .step-btn:focus-visible { outline: 2px solid #0e7490; outline-offset: 2px; }
+</style>
+{% endblock %}
+{% block content %}
+<header class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-white px-4 py-3 sm:px-6 sm:py-4">
+  <h1 class="text-lg font-extrabold text-primary-hover">{% if current %}ویرایش درخواست{% else %}ثبت فروش جدید{% endif %}</h1>
+  <a class="btn btn-outline" href="{% url 'requests' %}">بازگشت به فهرست</a>
+</header>
+{% if errors or current.incomplete %}
+<div id="formErrors" class="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
+  <div class="mb-1">{% if current.incomplete %}نواقص این اعلام فروش:{% else %}فرم کامل نیست:{% endif %}</div>
+  {% if errors %}
+  <ul class="list-disc pr-5">{% for err in errors %}<li>{{ err }}</li>{% endfor %}</ul>
+  {% else %}
+  <p>فیلدهای ضروری پر شده‌اند. با ذخیرهٔ دوباره، برچسب ناقص برداشته می‌شود.</p>
+  {% endif %}
+</div>
+{% endif %}
+<form method="post" id="saleForm" enctype="multipart/form-data">
+  {% csrf_token %}
+  <nav class="card mb-4 p-3 sm:p-4" aria-label="مراحل فرم">
+    <ol class="grid grid-cols-4 gap-1.5">
+      <li><button type="button" data-goto="1" class="step-btn flex w-full flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-extrabold text-muted sm:text-xs" aria-current="step"><span class="step-num grid h-7 w-7 place-items-center rounded-full bg-primary text-xs text-white">۱</span>فروش</button></li>
+      <li><button type="button" data-goto="2" class="step-btn flex w-full flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-extrabold text-muted sm:text-xs"><span class="step-num grid h-7 w-7 place-items-center rounded-full bg-slate-100 text-xs">۲</span>فاکتور</button></li>
+      <li><button type="button" data-goto="3" class="step-btn flex w-full flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-extrabold text-muted sm:text-xs"><span class="step-num grid h-7 w-7 place-items-center rounded-full bg-slate-100 text-xs">۳</span>اعتبار</button></li>
+      <li><button type="button" data-goto="4" class="step-btn flex w-full flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-extrabold text-muted sm:text-xs"><span class="step-num grid h-7 w-7 place-items-center rounded-full bg-slate-100 text-xs">۴</span>ثبت</button></li>
+    </ol>
+    <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100"><div id="stepBar" class="h-full rounded-full bg-primary transition-all" style="width:25%"></div></div>
+    <p id="stepHint" class="mt-2 text-xs font-semibold leading-5 text-muted">{% if lock_seller %}تاریخ فروش و مشتری را انتخاب کنید. فروشنده همین حساب شماست.{% else %}فروشنده، تاریخ فروش و مشتری را انتخاب کنید.{% endif %}</p>
+  </nav>
+
+  <div data-step="1" class="space-y-4">
+    <div class="grid gap-4 xl:grid-cols-2">
+      <section class="card p-4 sm:p-5">
+        <h3 class="font-extrabold">اطلاعات فروش</h3>
+        <p class="mb-3 text-xs font-semibold text-muted">تاریخ دقیق را وارد کنید</p>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label class="label">فروشنده <span class="text-red-500">*</span></label>
+            <select name="seller" class="field" {% if lock_seller %}disabled{% endif %}>
+              {% for person in sellers %}
+              <option value="{{ person.pk }}" {% if lock_seller or prefill.seller_id == person.pk or not prefill.seller_id and entry.seller_id == person.pk %}selected{% endif %}>{{ person.full_name }}{% if person.expert_name and person.expert_name != person.full_name %} — {{ person.expert_name }}{% endif %}</option>
+              {% endfor %}
+            </select>
+            {% if lock_seller %}
+            <input type="hidden" name="seller" value="{{ user.pk }}">
+            <p class="mt-1 text-[11px] font-bold text-muted">همین حساب شماست و قابل تغییر نیست</p>
+            {% endif %}
+          </div>
+          <div>
+            <label class="label">تاریخ فروش <span class="text-red-500">*</span></label>
+            <input name="sold_on" class="field cursor-pointer" data-jdate readonly placeholder="۱۴۰۵/۰۶/۱۲" value="{{ entry.sold_on|input_date }}">
+          </div>
+          <div>
+            <label class="label">نوع تسویه <span class="text-red-500">*</span></label>
+            <select name="settlement" class="field">{% for item in settlements %}<option {% if entry.settlement == item or prefill.settlement == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select>
+          </div>
+          <div>
+            <label class="label">نوع مشتری <span class="text-red-500">*</span></label>
+            <select name="customer_type" class="field">{% for item in cust_types %}<option {% if entry.customer_type == item or prefill.customer_type == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select>
+          </div>
+        </div>
+      </section>
+      <section class="card p-4 sm:p-5">
+        <h3 class="font-extrabold">مشتری</h3>
+        <p class="mb-3 text-xs text-muted">مشتری را انتخاب کنید تا مشخصات فروش و پرونده اعتبار با هم پر شود</p>
+        <label class="label" for="customerPick">نام مشتری <span class="text-red-500">*</span></label>
+        <select id="customerPick" class="field" data-autofill="{% if autofill_credit %}1{% else %}0{% endif %}">
+          <option value="">انتخاب مشتری</option>
+          {% for c in customers %}
+          <option value="{{ c.id }}" {% if prefill.customer_id == c.id %}selected{% endif %}>{{ c.name }}{% if c.city %} — {{ c.city }}{% endif %}</option>
+          {% endfor %}
+        </select>
+        <button type="button" id="newCustomer" class="btn btn-primary mt-3">ثبت مشتری جدید</button>
+        <input name="customer_name" id="customerName" class="field mt-3{% if prefill.customer_id or not prefill.customer_name %} hidden{% endif %}" placeholder="نام مشتری جدید" value="{{ prefill.customer_name }}" autocomplete="off" {% if prefill.customer_id or not prefill.customer_name %}hidden{% endif %}>
+        <p id="customerFillNote" class="mt-2 hidden text-xs font-bold" hidden></p>
+      </section>
+    </div>
+  </div>
+
+  <div data-step="2" class="hidden space-y-4" hidden>
+    <section class="card p-4 sm:p-5">
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 class="font-extrabold">اقلام فاکتور</h3>
+          <p class="text-xs text-muted">مبالغ به تومان است و قیمت‌ها برای هر واحد</p>
+        </div>
+        <button type="button" class="btn btn-outline" data-add="items">+ افزودن قلم</button>
+      </div>
+      <div id="items" class="space-y-2">
+        {% if entry and entry.line_list %}
+          {% for line in entry.line_list %}
+          <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
+            <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">قلم فاکتور</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
+            <label class="label">کالا</label>
+            <select name="product" class="field">
+              <option value="">انتخاب کالا</option>
+              {% for name in products %}
+              <option value="{{ name }}" {% if line.product_name == name %}selected{% endif %}>{{ name }}</option>
+              {% endfor %}
+            </select>
+            <div class="mt-2 grid grid-cols-2 gap-2">
+              <div><label class="label">تعداد</label><input name="qty" class="field" dir="ltr" inputmode="decimal" autocomplete="off" placeholder="تعداد" value="{{ line.qty }}"></div>
+              <div><label class="label">قیمت فروش هر واحد</label><input name="unit_price" class="field" dir="ltr" placeholder="قیمت فروش هر واحد" value="{{ line.unit_price }}"></div>
+              <div><label class="label">قیمت خرید هر واحد</label><input name="unit_cost" class="field" dir="ltr" placeholder="قیمت خرید هر واحد" value="{{ line.unit_cost }}"></div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
+            <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">قلم فاکتور</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
+            <label class="label">کالا</label>
+            <select name="product" class="field">
+              <option value="">انتخاب کالا</option>
+              {% for name in products %}
+              <option value="{{ name }}">{{ name }}</option>
+              {% endfor %}
+            </select>
+            <div class="mt-2 grid grid-cols-2 gap-2">
+              <div><label class="label">تعداد</label><input name="qty" class="field" dir="ltr" inputmode="decimal" autocomplete="off" placeholder="تعداد" value="1"></div>
+              <div><label class="label">قیمت فروش هر واحد</label><input name="unit_price" class="field" dir="ltr" placeholder="قیمت فروش هر واحد"></div>
+              <div><label class="label">قیمت خرید هر واحد</label><input name="unit_cost" class="field" dir="ltr" placeholder="قیمت خرید هر واحد"></div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </section>
+    <div class="grid gap-4 xl:grid-cols-2">
+      <section class="card p-4 sm:p-5">
+        <div class="mb-3 flex items-center justify-between gap-2">
+          <h3 class="font-extrabold">پرداختی‌ها</h3>
+          <button type="button" class="btn btn-outline" data-add="pays">+ افزودن پرداخت</button>
+        </div>
+        <div id="pays" class="space-y-2">
+          {% if entry %}
+            {% for pay in entry.payment_list %}
+            <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
+              <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">پرداخت</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
+              <div class="grid grid-cols-2 gap-2">
+                <div><label class="label">مبلغ</label><input name="pay_amount" class="field" dir="ltr" placeholder="مبلغ" value="{{ pay.amount }}"></div>
+                <div><label class="label">تاریخ</label><input name="pay_date" class="field cursor-pointer" data-jdate readonly placeholder="۱۴۰۵/۰۶/۱۲" value="{{ pay.paid_on|input_date }}"></div>
+                <div class="col-span-2"><label class="label">روش</label><select name="pay_method" class="field">{% for m in pay_methods %}<option {% if pay.method == m %}selected{% endif %}>{{ m }}</option>{% endfor %}</select></div>
+                <div class="col-span-2"><label class="label">یادداشت</label><input name="pay_note" class="field" placeholder="یادداشت" value="{{ pay.note }}"></div>
+              </div>
+            </div>
+            {% empty %}
+            <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
+              <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">پرداخت</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
+              <div class="grid grid-cols-2 gap-2">
+                <div><label class="label">مبلغ</label><input name="pay_amount" class="field" dir="ltr" placeholder="مبلغ"></div>
+                <div><label class="label">تاریخ</label><input name="pay_date" class="field cursor-pointer" data-jdate readonly placeholder="۱۴۰۵/۰۶/۱۲"></div>
+                <div class="col-span-2"><label class="label">روش</label><select name="pay_method" class="field">{% for m in pay_methods %}<option>{{ m }}</option>{% endfor %}</select></div>
+                <div class="col-span-2"><label class="label">یادداشت</label><input name="pay_note" class="field" placeholder="یادداشت"></div>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
+              <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">پرداخت</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
+              <div class="grid grid-cols-2 gap-2">
+                <div><label class="label">مبلغ</label><input name="pay_amount" class="field" dir="ltr" placeholder="مبلغ"></div>
+                <div><label class="label">تاریخ</label><input name="pay_date" class="field cursor-pointer" data-jdate readonly placeholder="۱۴۰۵/۰۶/۱۲"></div>
+                <div class="col-span-2"><label class="label">روش</label><select name="pay_method" class="field">{% for m in pay_methods %}<option>{{ m }}</option>{% endfor %}</select></div>
+                <div class="col-span-2"><label class="label">یادداشت</label><input name="pay_note" class="field" placeholder="یادداشت"></div>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+      <section class="card p-4 sm:p-5">
+        <div class="mb-3 flex items-center justify-between gap-2">
+          <div>
+            <h3 class="font-extrabold">چک‌ها</h3>
+            <p class="text-xs text-muted">فروش قسطی حداقل یک چک می‌خواهد</p>
+          </div>
+          <button type="button" class="btn btn-outline" data-add="checks">+ افزودن چک</button>
+        </div>
+        <div id="checks" class="space-y-2">
+          {% if entry %}
+            {% for chk in entry.check_list %}
+            <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
+              <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">چک</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
+              <div class="grid grid-cols-2 gap-2">
+                <div><label class="label">شماره</label><input name="chk_number" class="field" dir="ltr" placeholder="شماره" value="{{ chk.number }}"></div>
+                <div><label class="label">مبلغ</label><input name="chk_amount" class="field" dir="ltr" placeholder="مبلغ" value="{{ chk.amount }}"></div>
+                <div><label class="label">سررسید</label><input name="chk_date" class="field cursor-pointer" data-jdate readonly placeholder="سررسید" value="{{ chk.due_on|input_date }}"></div>
+                <div><label class="label">بانک</label><input name="chk_bank" class="field" list="bankList" placeholder="بانک" value="{{ chk.bank }}"></div>
+              </div>
+            </div>
+            {% empty %}
+            <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
+              <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">چک</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
+              <div class="grid grid-cols-2 gap-2">
+                <div><label class="label">شماره</label><input name="chk_number" class="field" dir="ltr" placeholder="شماره"></div>
+                <div><label class="label">مبلغ</label><input name="chk_amount" class="field" dir="ltr" placeholder="مبلغ"></div>
+                <div><label class="label">سررسید</label><input name="chk_date" class="field cursor-pointer" data-jdate readonly placeholder="سررسید"></div>
+                <div><label class="label">بانک</label><input name="chk_bank" class="field" list="bankList" placeholder="بانک"></div>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
+              <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">چک</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
+              <div class="grid grid-cols-2 gap-2">
+                <div><label class="label">شماره</label><input name="chk_number" class="field" dir="ltr" placeholder="شماره"></div>
+                <div><label class="label">مبلغ</label><input name="chk_amount" class="field" dir="ltr" placeholder="مبلغ"></div>
+                <div><label class="label">سررسید</label><input name="chk_date" class="field cursor-pointer" data-jdate readonly placeholder="سررسید"></div>
+                <div><label class="label">بانک</label><input name="chk_bank" class="field" list="bankList" placeholder="بانک"></div>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div data-step="3" class="hidden space-y-4" hidden>
+    <section class="card p-4 sm:p-5">
+      <h3 class="font-extrabold">اطلاعات تماس</h3>
+      <p class="mb-3 text-xs text-muted">با انتخاب مشتری پر می‌شود. برای ثبت فروش ضروری است.</p>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label class="label" for="customerPhone">شماره تماس <span class="text-red-500">*</span></label>
+          <input name="phone" id="customerPhone" class="field" dir="ltr" value="{{ entry.phone|default:prefill.phone }}" placeholder="09121234567">
+        </div>
+        <div>
+          <label class="label" for="customerCity">شهر / استان <span class="text-red-500">*</span></label>
+          <input name="city" id="customerCity" class="field" value="{{ entry.city|default:prefill.city }}">
+        </div>
+        <div class="sm:col-span-2">
+          <label class="label" for="customerAddress">آدرس <span class="text-red-500">*</span></label>
+          <textarea name="address" id="customerAddress" class="field" rows="2">{{ entry.address|default:prefill.address }}</textarea>
+        </div>
+      </div>
+    </section>
+    <section class="card p-4 sm:p-5">
+      <div class="mb-3 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h3 class="font-extrabold">اعتبارسنجی مشتری <span class="pill bg-slate-100 text-slate-600">همه اختیاری</span></h3>
+          <p class="mt-1 text-xs text-muted">نبودِ هیچ‌کدام جلوی ثبت فروش را نمی‌گیرد. <span id="creditCount" class="font-extrabold text-ink"></span></p>
+        </div>
+        <div class="flex gap-2">
+          <button type="button" class="btn btn-outline !min-h-9 !px-3 !py-1.5 text-xs" id="openAll">باز کردن بخش‌ها</button>
+          <button type="button" class="btn btn-outline !min-h-9 !px-3 !py-1.5 text-xs" id="closeAll">جمع کردن بخش‌ها</button>
+        </div>
+      </div>
+      {% if warnings %}<ul class="mb-3 text-sm text-amber-800">{% for w in warnings %}<li>{{ w }}</li>{% endfor %}</ul>{% endif %}
+      <div id="creditBox" class="space-y-2">
+        {% for group in schema %}
+        <details data-group="{{ group.k }}" class="rounded-2xl border border-line" {% for field in group.fields %}{% if entry.credit|get_item:field.k %}open{% endif %}{% endfor %}>
+          <summary class="flex cursor-pointer items-center justify-between gap-3 px-3 py-3 sm:px-4">
+            <span class="min-w-0">
+              <span class="block font-extrabold">{{ group.t }}</span>
+              <span class="mt-0.5 block text-xs font-semibold text-muted">{{ group.d }}</span>
+            </span>
+            <span class="flex shrink-0 items-center gap-2">
+              <span data-fill class="pill bg-slate-100 text-slate-600">{{ group.fields|length|fa }} فیلد</span>
+              <svg class="chev h-4 w-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"></path></svg>
+            </span>
+          </summary>
+          <div class="grid gap-3 border-t border-line p-3 sm:p-4 md:grid-cols-2">
+            {% for field in group.fields %}
+            <div class="{% if field.wide %}md:col-span-2{% endif %}">
+              <label class="label">{{ field.t }}</label>
+              {% if field.type == 'select' %}
+              <select name="c_{{ field.k }}" class="field"><option value="">—</option>{% for opt in field.opts %}<option {% if entry.credit|get_item:field.k == opt %}selected{% endif %}>{{ opt }}</option>{% endfor %}</select>
+              {% elif field.type == 'textarea' %}
+              <textarea name="c_{{ field.k }}" class="field" rows="2">{{ entry.credit|get_item:field.k }}</textarea>
+              {% else %}
+              <input name="c_{{ field.k }}" value="{{ entry.credit|get_item:field.k }}" class="field{% if field.type == 'date' %} cursor-pointer{% endif %}" {% if field.type == 'date' %}data-jdate readonly placeholder="۱۴۰۵/۰۶/۱۲"{% else %}placeholder="{{ field.ph }}"{% endif %} {% if field.k == 'mainBank' %}list="bankList"{% endif %} {% if field.type == 'money' %}data-toman{% endif %} {% if field.type == 'digits' or field.type == 'money' or field.type == 'int' or field.type == 'email' %}dir="ltr"{% endif %}>
+              {% endif %}
+              {% if field.hint %}<span class="mt-1 block text-[11px] text-muted">{{ field.hint }}</span>{% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </details>
+        {% endfor %}
+
+        <details class="rounded-2xl border border-line" {% if entry.guarantees %}open{% endif %}>
+          <summary class="flex cursor-pointer items-center justify-between gap-3 px-3 py-3 sm:px-4">
+            <span class="font-extrabold">ضمانت‌ها و وثایق</span>
+            <svg class="chev h-4 w-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"></path></svg>
+          </summary>
+          <div class="border-t border-line p-3 sm:p-4">
+            <div id="guars" class="space-y-2">
+              {% if entry.guarantees %}
+                {% for g in entry.guarantees %}
+                <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
+                  <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">ضمانت</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
+                  <label class="label">نوع ضمانت</label>
+                  <select name="guar_type" class="field">{% for opt in guarantees %}<option {% if g.type == opt %}selected{% endif %}>{{ opt }}</option>{% endfor %}</select>
+                  <div class="mt-2 grid grid-cols-2 gap-2">
+                    <div><label class="label">به نام</label><input name="guar_holder" class="field" placeholder="به نام" value="{{ g.holder }}"></div>
+                    <div><label class="label">مبلغ</label><input name="guar_amount" class="field" dir="ltr" placeholder="مبلغ" value="{{ g.amount }}"></div>
+                  </div>
+                </div>
+                {% endfor %}
+              {% else %}
+                <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
+                  <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">ضمانت</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
+                  <label class="label">نوع ضمانت</label>
+                  <select name="guar_type" class="field">{% for opt in guarantees %}<option>{{ opt }}</option>{% endfor %}</select>
+                  <div class="mt-2 grid grid-cols-2 gap-2">
+                    <div><label class="label">به نام</label><input name="guar_holder" class="field" placeholder="به نام"></div>
+                    <div><label class="label">مبلغ</label><input name="guar_amount" class="field" dir="ltr" placeholder="مبلغ"></div>
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+            <button type="button" class="btn btn-outline mt-2" data-add="guars">+ افزودن ضمانت</button>
+          </div>
+        </details>
+
+        <details class="rounded-2xl border border-line" {% if entry.references %}open{% endif %}>
+          <summary class="flex cursor-pointer items-center justify-between gap-3 px-3 py-3 sm:px-4">
+            <span class="font-extrabold">معرف‌ها</span>
+            <svg class="chev h-4 w-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"></path></svg>
+          </summary>
+          <div class="border-t border-line p-3 sm:p-4">
+            <div id="refs" class="space-y-2">
+              {% if entry.references %}
+                {% for ref in entry.references %}
+                <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
+                  <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">معرف</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
+                  <div class="grid grid-cols-2 gap-2">
+                    <div><label class="label">نام</label><input name="ref_name" class="field" placeholder="نام" value="{{ ref.name }}"></div>
+                    <div><label class="label">موبایل</label><input name="ref_phone" class="field" dir="ltr" placeholder="موبایل" value="{{ ref.phone }}"></div>
+                  </div>
+                  <div class="mt-2"><label class="label">نسبت</label><select name="ref_rel" class="field">{% for r in relations %}<option {% if ref.relation == r %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+                </div>
+                {% endfor %}
+              {% else %}
+                <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
+                  <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">معرف</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
+                  <div class="grid grid-cols-2 gap-2">
+                    <div><label class="label">نام</label><input name="ref_name" class="field" placeholder="نام"></div>
+                    <div><label class="label">موبایل</label><input name="ref_phone" class="field" dir="ltr" placeholder="موبایل"></div>
+                  </div>
+                  <div class="mt-2"><label class="label">نسبت</label><select name="ref_rel" class="field">{% for r in relations %}<option>{{ r }}</option>{% endfor %}</select></div>
+                </div>
+              {% endif %}
+            </div>
+            <button type="button" class="btn btn-outline mt-2" data-add="refs">+ افزودن معرف</button>
+          </div>
+        </details>
+
+        <details class="rounded-2xl border border-line" {% if entry.docs %}open{% endif %}>
+          <summary class="flex cursor-pointer items-center justify-between gap-3 px-3 py-3 sm:px-4">
+            <span class="font-extrabold">مدارک دریافت‌شده</span>
+            <svg class="chev h-4 w-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"></path></svg>
+          </summary>
+          <div class="grid gap-2 border-t border-line p-3 sm:grid-cols-2 sm:p-4">
+            {% for doc in docs %}
+            <label class="flex items-center gap-2 rounded-xl border border-line px-3 py-2 text-sm font-semibold"><input type="checkbox" name="doc" value="{{ doc }}" {% if entry and doc in entry.docs %}checked{% endif %}> {{ doc }}</label>
+            {% endfor %}
+          </div>
+        </details>
+      </div>
+    </section>
+  </div>
+
+  <div data-step="4" class="hidden space-y-4" hidden>
+    <section class="card p-4 sm:p-5">
+      <h3 class="font-extrabold">جمع‌بندی</h3>
+      <p class="mb-3 text-xs font-semibold text-muted">خلاصه‌ی اطلاعات واردشده. برای اصلاح هر بخش، ویرایش را بزنید.</p>
+      <div id="recap" class="grid gap-2 sm:grid-cols-2"></div>
+    </section>
+    <section class="card p-4 sm:p-5">
+      <label class="label">توضیحات</label>
+      <textarea name="note" class="field" rows="3">{{ entry.note|default:prefill.note }}</textarea>
+      <label class="mt-4 flex items-start gap-2 text-sm font-bold"><input type="checkbox" name="defer" value="1" class="mt-1"><span>بقیه را بعداً پر می‌کنم <small class="block font-semibold text-muted">درخواست با برچسب ناقص ثبت می‌شود و تا تکمیل، قابل تایید نیست.</small></span></label>
+    </section>
+    <section class="card p-4 sm:p-5">
+      <h3 class="font-extrabold">آپلود مدارک</h3>
+      <p class="mb-3 text-xs text-muted">تصویر یا PDF. هر فایل تا ۸ مگابایت. اختیاری است و همراه همین درخواست ذخیره می‌شود.</p>
+      {% if current %}
+      <ul class="mb-3 space-y-2">
+        {% for doc in current.files.all %}
+        <li class="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2 text-sm">
+          <a class="truncate font-bold text-primary" href="{{ doc.file.url }}" target="_blank" rel="noopener">{{ doc.name|default:"مدرک" }}</a>
+          <label class="flex shrink-0 items-center gap-1 text-xs font-bold text-red-600"><input type="checkbox" name="remove_file" value="{{ doc.pk }}"> حذف</label>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      <label class="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-line bg-canvas px-4 py-6 text-center">
+        <span class="text-sm font-extrabold">انتخاب فایل</span>
+        <span class="mt-1 text-xs text-muted">چند فایل را با هم می‌توانید انتخاب کنید</span>
+        <input id="saleUploads" type="file" name="uploads" class="mt-3 max-w-full text-xs" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf" multiple>
+      </label>
+      <ul id="uploadNames" class="mt-2 space-y-1 text-xs font-bold text-muted"></ul>
+    </section>
+  </div>
+
+  <datalist id="bankList">{% for bank in banks %}<option value="{{ bank }}"></option>{% endfor %}</datalist>
+
+  <div class="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-card border border-line bg-white p-3">
+    <button type="button" id="stepPrev" class="btn btn-outline">مرحله قبل</button>
+    <span id="stepCount" class="text-xs font-extrabold text-muted">۱ از ۴</span>
+    <div class="flex gap-2">
+      <a id="stepCancel" class="btn btn-outline hidden" hidden href="{% url 'requests' %}">انصراف</a>
+      <button type="button" id="stepNext" class="btn btn-primary">مرحله بعد</button>
+      <button type="submit" id="stepSubmit" class="btn btn-primary hidden" hidden>ارسال برای تایید</button>
+    </div>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+{{ customers|json_script:"cust-json" }}
+<script>
+const HINTS = [
+  '{% if lock_seller %}تاریخ فروش و مشتری را انتخاب کنید. فروشنده همین حساب شماست و قابل تغییر نیست.{% else %}فروشنده، تاریخ فروش و مشتری را انتخاب کنید. مشتری تازه را با دکمه ثبت مشتری جدید وارد کنید.{% endif %}',
+  'اقلام فاکتور، پرداخت‌ها و در فروش قسطی، چک‌ها را ثبت کنید. مبالغ به تومان است.',
+  'شماره تماس، شهر و آدرس ضروری است. بقیه اعتبارسنجی اختیاری است.',
+  'خلاصه را ببینید، توضیحات را بنویسید و برای تایید بفرستید. می‌توانید بقیه را بعداً پر کنید.',
+];
+let step = 1;
+
+function fa(n) {
+  return String(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
+}
+
+const MONEY_NAMES = { unit_price: 1, unit_cost: 1, pay_amount: 1, chk_amount: 1, guar_amount: 1 };
+const MONEY_ONES = ['', 'یک', 'دو', 'سه', 'چهار', 'پنج', 'شش', 'هفت', 'هشت', 'نه'];
+const MONEY_TEENS = ['ده', 'یازده', 'دوازده', 'سیزده', 'چهارده', 'پانزده', 'شانزده', 'هفده', 'هجده', 'نوزده'];
+const MONEY_TENS = ['', '', 'بیست', 'سی', 'چهل', 'پنجاه', 'شصت', 'هفتاد', 'هشتاد', 'نود'];
+const MONEY_HUNDREDS = ['', 'صد', 'دویست', 'سیصد', 'چهارصد', 'پانصد', 'ششصد', 'هفتصد', 'هشتصد', 'نهصد'];
+const MONEY_SCALES = ['', 'هزار', 'میلیون', 'میلیارد', 'بیلیون', 'بیلیارد', 'تریلیون'];
+
+function isMoneyField(el) {
+  return !!(el && el.tagName === 'INPUT' && (el.hasAttribute('data-toman') || MONEY_NAMES[el.name]));
+}
+
+function moneyDigits(value) {
+  const persian = '۰۱۲۳۴۵۶۷۸۹';
+  const arabic = '٠١٢٣٤٥٦٧٨٩';
+  let out = '';
+  for (const ch of String(value ?? '')) {
+    if (ch >= '0' && ch <= '9') out += ch;
+    else if (persian.includes(ch)) out += String(persian.indexOf(ch));
+    else if (arabic.includes(ch)) out += String(arabic.indexOf(ch));
+  }
+  return out.replace(/^0+(?=\d)/, '');
+}
+
+function threeDigitWords(n) {
+  const parts = [];
+  const hundreds = Math.floor(n / 100);
+  const rest = n % 100;
+  if (hundreds) parts.push(MONEY_HUNDREDS[hundreds]);
+  if (rest >= 10 && rest < 20) parts.push(MONEY_TEENS[rest - 10]);
+  else {
+    const tens = Math.floor(rest / 10);
+    const ones = rest % 10;
+    if (tens) parts.push(MONEY_TENS[tens]);
+    if (ones) parts.push(MONEY_ONES[ones]);
+  }
+  return parts.join(' و ');
+}
+
+function moneyWords(digits) {
+  if (!digits) return '';
+  const padded = digits.padStart(Math.ceil(digits.length / 3) * 3, '0');
+  const groups = padded.match(/\d{3}/g) || [];
+  const parts = [];
+  groups.forEach((group, index) => {
+    const n = Number(group);
+    if (!n) return;
+    const scale = MONEY_SCALES[groups.length - 1 - index] || '';
+    const text = threeDigitWords(n);
+    parts.push(scale ? text + ' ' + scale : text);
+  });
+  return parts.join(' و ');
+}
+
+function paintMoney(el) {
+  if (!isMoneyField(el)) return;
+  const digits = moneyDigits(el.value);
+  const shown = digits ? fa(digits.replace(/\B(?=(\d{3})+(?!\d))/g, '٬')) : '';
+  const caret = el.selectionStart;
+  const before = caret == null ? digits.length : moneyDigits(el.value.slice(0, caret)).length;
+  if (el.value !== shown) {
+    el.value = shown;
+    if (document.activeElement === el && caret != null) {
+      let seen = 0;
+      let pos = shown.length;
+      for (let i = 0; i < shown.length; i++) {
+        if (moneyDigits(shown[i])) seen += 1;
+        if (seen >= before) {
+          pos = i + 1;
+          break;
+        }
+      }
+      if (!before) pos = 0;
+      el.setSelectionRange(pos, pos);
+    }
+  }
+  el.inputMode = 'numeric';
+  const label = el.parentElement && el.parentElement.querySelector(':scope > label');
+  if (label && !label.querySelector('[data-toman-unit]') && !label.textContent.includes('تومان')) {
+    const unit = document.createElement('span');
+    unit.dataset.tomanUnit = '';
+    unit.className = 'font-semibold text-muted';
+    unit.textContent = ' تومان';
+    label.append(unit);
+  }
+  let words = el.nextElementSibling;
+  if (!words || !words.hasAttribute('data-toman-words')) {
+    words = document.createElement('p');
+    words.setAttribute('data-toman-words', '');
+    words.className = 'mt-1 text-[11px] font-bold leading-5 text-primary';
+    el.after(words);
+  }
+  const text = digits ? moneyWords(digits) + ' تومان' : '';
+  words.textContent = text;
+  words.hidden = !text;
+}
+
+function sanitizeQty(value) {
+  const persian = '۰۱۲۳۴۵۶۷۸۹';
+  const arabic = '٠١٢٣٤٥٦٧٨٩';
+  let out = '';
+  let dot = false;
+  let frac = 0;
+  for (const ch of String(value ?? '')) {
+    let digit = '';
+    if (ch >= '0' && ch <= '9') digit = ch;
+    else if (persian.includes(ch)) digit = String(persian.indexOf(ch));
+    else if (arabic.includes(ch)) digit = String(arabic.indexOf(ch));
+    if (digit) {
+      if (dot) {
+        if (frac >= 2) continue;
+        frac += 1;
+      }
+      out += digit;
+      continue;
+    }
+    if ((ch === '.' || ch === '٫') && !dot && out) {
+      dot = true;
+      out += '.';
+    }
+  }
+  return out;
+}
+
+function paintQty(el, commit) {
+  if (!el || el.tagName !== 'INPUT' || el.name !== 'qty') return;
+  const caret = el.selectionStart;
+  const raw = el.value;
+  let shown = sanitizeQty(raw);
+  const typing = !commit && (shown === '' || shown.endsWith('.'));
+  if (!typing) {
+    const n = Number(shown);
+    if (!shown || !Number.isFinite(n) || n < 1) shown = '1';
+    else if (commit) shown = String(n);
+  }
+  if (el.value !== shown) {
+    const before = caret == null ? shown.length : sanitizeQty(raw.slice(0, caret)).length;
+    el.value = shown;
+    if (document.activeElement === el && caret != null) {
+      el.setSelectionRange(before, before);
+    }
+  }
+  el.inputMode = 'decimal';
+}
+
+function syncMoney(root) {
+  if (!root) return;
+  root.querySelectorAll('input').forEach((el) => {
+    if (el.name === 'qty') paintQty(el, true);
+    else if (isMoneyField(el)) paintMoney(el);
+  });
+}
+
+function addRow(id) {
+  const box = document.getElementById(id);
+  const row = box && box.querySelector('[data-row]');
+  if (!row) return;
+  const clone = row.cloneNode(true);
+  clone.querySelectorAll('input').forEach((el) => { el.value = el.name === 'qty' ? '1' : ''; });
+  clone.querySelectorAll('select').forEach((el) => { el.selectedIndex = 0; });
+  syncMoney(clone);
+  box.appendChild(clone);
+}
+
+function removeRow(btn) {
+  const row = btn.closest('[data-row]');
+  const box = row && row.parentElement;
+  if (!box) return;
+  const rows = box.querySelectorAll('[data-row]');
+  if (rows.length === 1) {
+    row.querySelectorAll('input').forEach((el) => { el.value = el.name === 'qty' ? '1' : ''; });
+    row.querySelectorAll('select').forEach((el) => { el.selectedIndex = 0; });
+    syncMoney(row);
+    return;
+  }
+  row.remove();
+}
+
+function fieldText(name) {
+  const el = document.querySelector('#saleForm [name="' + name + '"]');
+  if (!el) return '';
+  if (el.tagName === 'SELECT') {
+    const opt = el.options[el.selectedIndex];
+    return opt ? opt.text.trim() : '';
+  }
+  return (el.value || '').trim();
+}
+
+function filledCount(boxId, name) {
+  const box = document.getElementById(boxId);
+  if (!box) return 0;
+  return [...box.querySelectorAll('[name="' + name + '"]')].filter((el) => (el.value || '').trim()).length;
+}
+
+function refreshMeta() {
+  document.querySelectorAll('#creditBox details[data-group]').forEach((det) => {
+    const fields = [...det.querySelectorAll('input, select, textarea')];
+    const n = fields.filter((el) => (el.value || '').trim()).length;
+    const badge = det.querySelector('[data-fill]');
+    if (!badge) return;
+    badge.textContent = n ? fa(n) + ' پر شده' : fa(fields.length) + ' فیلد';
+    badge.classList.toggle('bg-emerald-50', n > 0);
+    badge.classList.toggle('text-emerald-700', n > 0);
+    badge.classList.toggle('bg-slate-100', n === 0);
+    badge.classList.toggle('text-slate-600', n === 0);
+  });
+  const all = [...document.querySelectorAll('#creditBox [name^="c_"]')];
+  const n = all.filter((el) => (el.value || '').trim()).length;
+  const total = document.getElementById('creditCount');
+  if (total) total.textContent = fa(n) + ' از ' + fa(all.length) + ' فیلد';
+}
+
+function recapItem(label, value, goto) {
+  const wrap = document.createElement('div');
+  wrap.className = 'flex items-start justify-between gap-3 rounded-xl bg-canvas px-3 py-2';
+  const text = document.createElement('div');
+  text.className = 'min-w-0';
+  const l = document.createElement('div');
+  l.className = 'text-[11px] font-bold text-muted';
+  l.textContent = label;
+  const v = document.createElement('div');
+  v.className = 'truncate text-sm font-extrabold';
+  v.textContent = value || '—';
+  text.append(l, v);
+  const edit = document.createElement('button');
+  edit.type = 'button';
+  edit.className = 'shrink-0 text-[11px] font-extrabold text-primary';
+  edit.textContent = 'ویرایش';
+  edit.addEventListener('click', () => showStep(goto, true));
+  wrap.append(text, edit);
+  return wrap;
+}
+
+function fillRecap() {
+  const box = document.getElementById('recap');
+  if (!box) return;
+  box.replaceChildren();
+  const credit = [...document.querySelectorAll('#creditBox [name^="c_"]')];
+  const creditFilled = credit.filter((el) => (el.value || '').trim()).length;
+  const docs = document.querySelectorAll('#creditBox [name="doc"]:checked').length;
+  const rows = [
+    ['فروشنده', fieldText('seller'), 1],
+    ['تاریخ فروش', fieldText('sold_on'), 1],
+    ['نوع تسویه', fieldText('settlement'), 1],
+    ['نوع مشتری', fieldText('customer_type'), 1],
+    ['نام مشتری', fieldText('customer_name'), 1],
+    ['شماره تماس', fieldText('phone'), 3],
+    ['شهر / استان', fieldText('city'), 3],
+    ['آدرس', fieldText('address'), 3],
+    ['اقلام فاکتور', fa(filledCount('items', 'product')) + ' قلم', 2],
+    ['پرداختی‌ها', fa(filledCount('pays', 'pay_amount')) + ' مورد', 2],
+    ['چک‌ها', fa(filledCount('checks', 'chk_amount')) + ' فقره', 2],
+    ['اعتبارسنجی', fa(creditFilled) + ' از ' + fa(credit.length) + ' فیلد', 3],
+    ['مدارک', fa(docs) + ' مدرک', 3],
+  ];
+  rows.forEach(([label, value, goto]) => box.appendChild(recapItem(label, value, goto)));
+}
+
+function showStep(n, scroll) {
+  step = Math.min(4, Math.max(1, n));
+  document.querySelectorAll('#saleForm [data-step]').forEach((el) => {
+    const on = Number(el.dataset.step) === step;
+    el.hidden = !on;
+    el.classList.toggle('hidden', !on);
+  });
+  document.querySelectorAll('#saleForm [data-goto]').forEach((btn) => {
+    const i = Number(btn.dataset.goto);
+    const on = i === step;
+    btn.classList.toggle('is-on', on);
+    if (on) btn.setAttribute('aria-current', 'step');
+    else btn.removeAttribute('aria-current');
+    const bubble = btn.querySelector('.step-num');
+    bubble.className = 'step-num grid h-7 w-7 place-items-center rounded-full text-xs ' +
+      (on ? 'bg-primary text-white' : i < step ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-muted');
+  });
+  document.getElementById('stepHint').textContent = HINTS[step - 1];
+  document.getElementById('stepBar').style.width = (step * 25) + '%';
+  document.getElementById('stepCount').textContent = fa(step) + ' از ۴';
+  const prev = document.getElementById('stepPrev');
+  prev.classList.toggle('invisible', step === 1);
+  prev.disabled = step === 1;
+  document.getElementById('stepNext').hidden = step === 4;
+  document.getElementById('stepNext').classList.toggle('hidden', step === 4);
+  document.getElementById('stepSubmit').hidden = step !== 4;
+  document.getElementById('stepSubmit').classList.toggle('hidden', step !== 4);
+  document.getElementById('stepCancel').hidden = step !== 4;
+  document.getElementById('stepCancel').classList.toggle('hidden', step !== 4);
+  if (step === 3) refreshMeta();
+  if (step === 4) fillRecap();
+  if (scroll) {
+    const nav = document.querySelector('#saleForm nav');
+    const header = document.querySelector('header.sticky');
+    if (nav) {
+      nav.style.scrollMarginTop = ((header ? header.offsetHeight : 0) + 8) + 'px';
+      nav.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+}
+
+document.querySelectorAll('#saleForm [data-goto]').forEach((btn) => {
+  btn.addEventListener('click', () => showStep(Number(btn.dataset.goto), true));
+});
+document.getElementById('stepPrev').addEventListener('click', () => showStep(step - 1, true));
+document.getElementById('stepNext').addEventListener('click', () => showStep(step + 1, true));
+document.getElementById('saleForm').addEventListener('click', (event) => {
+  const add = event.target.closest('[data-add]');
+  if (add) addRow(add.dataset.add);
+  const remove = event.target.closest('[data-remove]');
+  if (remove) removeRow(remove);
+});
+document.getElementById('openAll').addEventListener('click', () => {
+  document.querySelectorAll('#creditBox details').forEach((el) => { el.open = true; });
+});
+document.getElementById('closeAll').addEventListener('click', () => {
+  document.querySelectorAll('#creditBox details').forEach((el) => { el.open = false; });
+});
+document.getElementById('saleForm').addEventListener('input', (event) => {
+  if (event.target && event.target.name === 'qty') paintQty(event.target, false);
+  if (isMoneyField(event.target)) paintMoney(event.target);
+  if (step === 3) refreshMeta();
+});
+document.getElementById('saleForm').addEventListener('focusout', (event) => {
+  if (event.target && event.target.name === 'qty') paintQty(event.target, true);
+});
+document.getElementById('saleForm').addEventListener('submit', () => {
+  document.querySelectorAll('#saleForm [name="qty"]').forEach((el) => paintQty(el, true));
+});
+const saleUploads = document.getElementById('saleUploads');
+if (saleUploads) {
+  saleUploads.addEventListener('change', () => {
+    const box = document.getElementById('uploadNames');
+    if (!box) return;
+    box.replaceChildren();
+    [...saleUploads.files].forEach((file) => {
+      const item = document.createElement('li');
+      item.textContent = file.name;
+      box.appendChild(item);
+    });
+  });
+}
+
+const people = JSON.parse(document.getElementById('cust-json').textContent);
+const nameInput = document.getElementById('customerName');
+const customerPick = document.getElementById('customerPick');
+
+function setHidden(el, on) {
+  if (!el) return;
+  el.hidden = on;
+  el.classList.toggle('hidden', on);
+}
+
+function writeControl(el, value) {
+  if (!el) return;
+  const text = value == null ? '' : String(value);
+  if (el.tagName === 'SELECT') {
+    const has = [...el.options].some((opt) => opt.value === text);
+    el.value = has ? text : '';
+    return;
+  }
+  el.value = text;
+  if (isMoneyField(el)) paintMoney(el);
+}
+
+function fillRepeat(boxId, rows, map) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  const sample = box.querySelector('[data-row]');
+  if (!sample) return;
+  const blank = sample.cloneNode(true);
+  blank.querySelectorAll('input, textarea').forEach((el) => { el.value = ''; });
+  blank.querySelectorAll('select').forEach((el) => { el.selectedIndex = 0; });
+  const list = Array.isArray(rows) && rows.length ? rows : [null];
+  box.replaceChildren();
+  list.forEach((row) => {
+    const node = blank.cloneNode(true);
+    if (row) map(node, row);
+    syncMoney(node);
+    box.appendChild(node);
+  });
+  const details = box.closest('details');
+  if (details) details.open = Array.isArray(rows) && rows.length > 0;
+}
+
+function fillDocs(docs) {
+  const chosen = new Set(docs || []);
+  let any = false;
+  document.querySelectorAll('#creditBox [name="doc"]').forEach((el) => {
+    el.checked = chosen.has(el.value);
+    if (el.checked) any = true;
+  });
+  const first = document.querySelector('#creditBox [name="doc"]');
+  const details = first && first.closest('details');
+  if (details) details.open = any;
+}
+
+function fillCredit(person) {
+  const credit = (person && person.credit) || {};
+  document.querySelectorAll('#creditBox [name^="c_"]').forEach((el) => {
+    const key = el.name.slice(2);
+    writeControl(el, Object.prototype.hasOwnProperty.call(credit, key) ? credit[key] : '');
+  });
+  document.querySelectorAll('#creditBox details[data-group]').forEach((det) => {
+    const filled = [...det.querySelectorAll('input, select, textarea')].some((el) => String(el.value || '').trim());
+    det.open = filled;
+  });
+  fillRepeat('guars', person && person.guarantees, (node, row) => {
+    writeControl(node.querySelector('[name="guar_type"]'), row.type || '');
+    writeControl(node.querySelector('[name="guar_holder"]'), row.holder || '');
+    writeControl(node.querySelector('[name="guar_amount"]'), row.amount ? row.amount : '');
+  });
+  fillRepeat('refs', person && person.references, (node, row) => {
+    writeControl(node.querySelector('[name="ref_name"]'), row.name || '');
+    writeControl(node.querySelector('[name="ref_phone"]'), row.phone || '');
+    writeControl(node.querySelector('[name="ref_rel"]'), row.relation || '');
+  });
+  fillDocs((person && person.docs) || []);
+  refreshMeta();
+}
+
+function fillSales(person) {
+  const phone = document.getElementById('customerPhone');
+  const city = document.getElementById('customerCity');
+  const address = document.getElementById('customerAddress');
+  if (phone) phone.value = person.phone || '';
+  if (city) city.value = person.city || '';
+  if (address) address.value = person.address || '';
+  [phone, city, address, nameInput].forEach((el) => el && el.classList.remove('is-gap'));
+  const type = document.querySelector('#saleForm [name="customer_type"]');
+  if (type) {
+    type.classList.remove('is-gap');
+    if (person.customer_type) writeControl(type, person.customer_type);
+  }
+}
+
+function clearFilled() {
+  const phone = document.getElementById('customerPhone');
+  const city = document.getElementById('customerCity');
+  const address = document.getElementById('customerAddress');
+  if (phone) phone.value = '';
+  if (city) city.value = '';
+  if (address) address.value = '';
+  const type = document.querySelector('#saleForm [name="customer_type"]');
+  if (type) type.selectedIndex = 0;
+  fillCredit(null);
+}
+
+function setCustomerNote(text, ok) {
+  const note = document.getElementById('customerFillNote');
+  if (!note) return;
+  if (!text) {
+    setHidden(note, true);
+    note.textContent = '';
+    return;
+  }
+  note.textContent = text;
+  note.classList.toggle('text-emerald-700', !!ok);
+  note.classList.toggle('text-muted', !ok);
+  setHidden(note, false);
+}
+
+function creditPieces(person) {
+  const fields = Object.values((person && person.credit) || {}).filter((value) => String(value || '').trim()).length;
+  return fields
+    + ((person && person.guarantees) || []).length
+    + ((person && person.references) || []).length
+    + ((person && person.docs) || []).length;
+}
+
+function applyCustomer(value) {
+  if (!customerPick) return;
+  customerPick.classList.remove('is-gap');
+  if (!value) {
+    setHidden(nameInput, true);
+    if (nameInput) nameInput.value = '';
+    clearFilled();
+    setCustomerNote('');
+    return;
+  }
+  const found = people.find((person) => String(person.id) === String(value));
+  if (!found) return;
+  setHidden(nameInput, true);
+  if (nameInput) nameInput.value = found.name;
+  fillSales(found);
+  fillCredit(found);
+  const filled = creditPieces(found);
+  setCustomerNote(
+    filled
+      ? 'مشخصات فروش و پرونده اعتبار «' + found.name + '» در فرم قرار گرفت.'
+      : 'مشخصات «' + found.name + '» قرار گرفت. پرونده اعتبار این مشتری خالی است.',
+    filled > 0,
+  );
+}
+
+function startNewCustomer() {
+  const alreadyNew = nameInput && !nameInput.hidden && customerPick && !customerPick.value;
+  if (customerPick) {
+    customerPick.value = '';
+    customerPick.classList.remove('is-gap');
+  }
+  setHidden(nameInput, false);
+  if (!alreadyNew) {
+    if (nameInput) nameInput.value = '';
+    clearFilled();
+  }
+  if (nameInput) nameInput.focus();
+  setCustomerNote('نام مشتری جدید را بنویسید. شماره تماس، شهر و آدرس را در مرحله اعتبار وارد کنید.', false);
+}
+
+if (customerPick) {
+  customerPick.addEventListener('change', () => applyCustomer(customerPick.value));
+  if (customerPick.dataset.autofill === '1' && customerPick.value) {
+    applyCustomer(customerPick.value);
+  }
+}
+const newCustomerBtn = document.getElementById('newCustomer');
+if (newCustomerBtn) newCustomerBtn.addEventListener('click', startNewCustomer);
+if (nameInput && !nameInput.hidden) {
+  setCustomerNote('نام مشتری جدید را بنویسید. شماره تماس، شهر و آدرس را در مرحله اعتبار وارد کنید.', false);
+}
+
+function markGaps(text) {
+  const rules = [
+    [/فروشنده/, ['seller']],
+    [/تاریخ فروش/, ['sold_on']],
+    [/تسویه/, ['settlement']],
+    [/نوع مشتری/, ['customer_type']],
+    [/نام مشتری/, ['customer_name']],
+    [/تماس/, ['phone']],
+    [/شهر/, ['city']],
+    [/آدرس/, ['address']],
+    [/قلم|فاکتور/, ['product', 'qty', 'unit_price']],
+    [/چک|سررسید/, ['chk_number', 'chk_amount', 'chk_date', 'chk_bank']],
+  ];
+  rules.forEach(([pattern, names]) => {
+    if (!pattern.test(text)) return;
+    names.forEach((name) => {
+      document.querySelectorAll('#saleForm [name="' + name + '"]').forEach((el) => el.classList.add('is-gap'));
+      if (name === 'customer_name' && customerPick && nameInput && !(nameInput.value || '').trim()) {
+        customerPick.classList.add('is-gap');
+      }
+    });
+  });
+}
+
+const err = document.getElementById('formErrors');
+let start = 1;
+if (err) {
+  const text = err.textContent || '';
+  markGaps(text);
+  const step1Gap = /فروشنده|تاریخ فروش|تسویه|نوع مشتری|نام مشتری/.test(text);
+  const contactGap = /تماس|شهر|آدرس/.test(text);
+  const invoiceGap = /قلم|فاکتور|چک/.test(text);
+  if (!step1Gap && contactGap) start = 3;
+  else if (!step1Gap && invoiceGap) start = 2;
+}
+showStep(start, false);
+syncMoney(document.getElementById('saleForm'));
+refreshMeta();
+</script>
+{% endblock %}

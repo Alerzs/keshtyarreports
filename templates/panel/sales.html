@@ -1,0 +1,89 @@
+{% extends "panel/base.html" %}
+{% load panel_tags %}
+{% block title %}فروش‌ها | کشت‌یار{% endblock %}
+{% block content %}
+<header class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="flex items-center gap-3 text-[19px] font-extrabold text-primary-hover">
+    <span class="grid h-[42px] w-[42px] place-items-center rounded-xl bg-gradient-to-br from-primary to-primary-hover text-white">
+      <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg>
+    </span>
+    فروش‌ها
+  </h1>
+  <span class="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3.5 py-2 text-[13px] font-bold text-muted">{{ total|fa }} فاکتور</span>
+</header>
+
+<form method="get" class="card mb-5 p-5">
+  <div class="flex flex-wrap items-center gap-3">
+    <input name="q" value="{{ query }}" placeholder="شماره فاکتور، نام مشتری یا مسئول فروش" class="field min-w-[220px] flex-1">
+    <select name="settlement" class="field !w-auto" onchange="this.form.submit()" aria-label="تسویه">
+      <option value="">همه تسویه‌ها</option>
+      {% for item in settlements %}<option value="{{ item }}" {% if settlement == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+    </select>
+    <select name="status" class="field !w-auto" onchange="this.form.submit()" aria-label="وضعیت فاکتور">
+      <option value="">همه وضعیت‌ها</option>
+      {% for item in statuses %}<option value="{{ item }}" {% if status == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+    </select>
+    <select name="balance" class="field !w-auto" onchange="this.form.submit()" aria-label="مانده حساب">
+      <option value="">وضعیت حساب: همه</option>
+      <option value="open" {% if balance == 'open' %}selected{% endif %}>باقی‌مانده دارد</option>
+      <option value="cleared" {% if balance == 'cleared' %}selected{% endif %}>تسویه شده</option>
+    </select>
+    <select name="expert" class="field !w-auto" onchange="this.form.submit()" aria-label="مسئول فروش">
+      <option value="">همه مسئول‌ها</option>
+      {% for person in experts %}<option value="{{ person.pk }}" {% if expert_id == person.pk|stringformat:"s" %}selected{% endif %}>{{ person.report_name }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-primary" type="submit">جستجو</button>
+  </div>
+</form>
+
+<div class="overflow-auto rounded-2xl border border-line bg-white shadow-card">
+  <table class="w-full min-w-[980px] text-right text-[13px]">
+    <thead class="bg-canvas text-muted">
+      <tr>
+        <th class="px-4 py-3 font-extrabold">شماره فاکتور</th>
+        <th class="px-4 py-3 font-extrabold">نام مشتری</th>
+        <th class="px-4 py-3 font-extrabold">مسئول فروش</th>
+        <th class="px-4 py-3 font-extrabold">مبلغ کل فروش</th>
+        <th class="px-4 py-3 font-extrabold">مبلغ کل خرید</th>
+        <th class="px-4 py-3 font-extrabold">سود کل</th>
+        <th class="px-4 py-3 font-extrabold">جمع دریافتی</th>
+        <th class="px-4 py-3 font-extrabold">مانده حساب</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr class="cursor-pointer border-t border-line transition hover:bg-canvas" data-href="{% url 'sale_detail' row.invoice.pk %}" onclick="if (!event.target.closest('a')) window.location = this.dataset.href">
+        <td class="px-4 py-3">
+          <a class="font-extrabold text-primary" href="{% url 'sale_detail' row.invoice.pk %}">{{ row.invoice.number }}</a>
+          <div class="mt-0.5 text-[11px] font-semibold text-muted">{{ row.invoice.sold_on|jdate }} · {{ row.invoice.settlement }}</div>
+        </td>
+        <td class="px-4 py-3 font-bold">
+          <a class="text-ink hover:text-primary" href="{% url 'customer_profile' row.invoice.customer_id %}">{{ row.invoice.customer.name }}</a>
+        </td>
+        <td class="px-4 py-3">{{ row.invoice.expert_label }}</td>
+        <td class="whitespace-nowrap px-4 py-3 font-extrabold">{{ row.sale|money:money_unit }}</td>
+        <td class="whitespace-nowrap px-4 py-3 font-extrabold">{{ row.cost|money:money_unit }}</td>
+        <td class="whitespace-nowrap px-4 py-3 font-extrabold">{{ row.profit|money:money_unit }}</td>
+        <td class="whitespace-nowrap px-4 py-3 font-extrabold text-emerald-700">{{ row.received|money:money_unit }}</td>
+        <td class="whitespace-nowrap px-4 py-3 font-extrabold {% if row.outstanding %}text-rose-600{% endif %}">{{ row.outstanding|money:money_unit }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="px-4 py-10 text-center font-bold text-muted">فاکتوری با این جستجو پیدا نشد.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if page.paginator.num_pages > 1 %}
+<nav class="mt-4 flex flex-wrap items-center justify-center gap-2" aria-label="صفحه‌های جدول">
+  {% if page.has_previous %}
+  <a class="btn btn-outline !min-h-9 !px-3" href="?{% if filters %}{{ filters }}&{% endif %}page={{ page.previous_page_number }}">قبلی</a>
+  {% endif %}
+  {% for number in page.paginator.page_range %}
+  <a class="grid h-9 min-w-9 place-items-center rounded-lg px-2 text-sm font-extrabold {% if number == page.number %}bg-primary text-white{% else %}bg-white text-muted border border-line hover:text-primary{% endif %}" href="?{% if filters %}{{ filters }}&{% endif %}page={{ number }}">{{ number|fa }}</a>
+  {% endfor %}
+  {% if page.has_next %}
+  <a class="btn btn-outline !min-h-9 !px-3" href="?{% if filters %}{{ filters }}&{% endif %}page={{ page.next_page_number }}">بعدی</a>
+  {% endif %}
+</nav>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends "panel/base.html" %}
+{% load panel_tags %}
+{% block title %}پورسانت‌ها | کشت‌یار{% endblock %}
+{% block content %}
+<header class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="flex items-center gap-3 text-[19px] font-extrabold text-primary-hover">
+      <span class="grid h-[42px] w-[42px] place-items-center rounded-xl bg-gradient-to-br from-primary to-primary-hover text-white">
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2"><line x1="19" y1="5" x2="5" y2="19"></line><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle></svg>
+      </span>
+      پورسانت‌ها
+    </h1>
+    <p class="mt-2 text-sm font-semibold text-muted">درصد و سطح هر فاکتور از سود ناخالص همان ماه کارشناس به دست می‌آید. فاکتورهای لغوشده در این فهرست نیستند.</p>
+  </div>
+  <span class="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3.5 py-2 text-[13px] font-bold text-muted">{{ total|fa }} فاکتور</span>
+</header>
+
+<section class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+  <article class="card p-4">
+    <div class="text-xs font-bold text-muted">جمع پورسانت</div>
+    <b class="mt-2 block text-primary" dir="ltr">{{ total_amount|money:money_unit }}</b>
+  </article>
+  <article class="card p-4">
+    <div class="text-xs font-bold text-muted">پرداخت‌شده</div>
+    <b class="mt-2 block text-emerald-700" dir="ltr">{{ paid_amount|money:money_unit }}</b>
+  </article>
+  <article class="card p-4">
+    <div class="text-xs font-bold text-muted">پرداخت‌نشده</div>
+    <b class="mt-2 block text-amber-700" dir="ltr">{{ unpaid_amount|money:money_unit }}</b>
+  </article>
+</section>
+
+<form method="get" class="card mb-5 p-5">
+  <div class="flex flex-wrap items-center gap-3">
+    <input name="q" value="{{ query }}" placeholder="شماره فاکتور، مشتری، کارشناس یا سطح" class="field min-w-[220px] flex-1">
+    <select name="expert" class="field !w-auto" onchange="this.form.submit()" aria-label="کارشناس">
+      <option value="">همه کارشناسان</option>
+      {% for person in experts %}<option value="{{ person.pk }}" {% if expert_id == person.pk|stringformat:"s" %}selected{% endif %}>{{ person.report_name }}</option>{% endfor %}
+    </select>
+    <select name="month" class="field !w-auto" onchange="this.form.submit()" aria-label="ماه">
+      <option value="">همه ماه‌ها</option>
+      {% for item in months %}<option value="{{ item.key }}" {% if month == item.key %}selected{% endif %}>{{ item.label }}</option>{% endfor %}
+    </select>
+    <select name="paid" class="field !w-auto" onchange="this.form.submit()" aria-label="وضعیت پرداخت پورسانت">
+      <option value="">همه وضعیت‌ها</option>
+      <option value="yes" {% if paid == 'yes' %}selected{% endif %}>پرداخت‌شده</option>
+      <option value="no" {% if paid == 'no' %}selected{% endif %}>پرداخت‌نشده</option>
+    </select>
+    <button class="btn btn-primary" type="submit">جستجو</button>
+  </div>
+</form>
+
+<div class="overflow-auto rounded-2xl border border-line bg-white shadow-card">
+  <table class="w-full min-w-[1100px] text-right text-[13px]">
+    <thead class="bg-canvas text-muted">
+      <tr>
+        <th class="px-4 py-3 font-extrabold">فاکتور</th>
+        <th class="px-4 py-3 font-extrabold">کارشناس</th>
+        <th class="px-4 py-3 font-extrabold">سود</th>
+        <th class="px-4 py-3 font-extrabold">سطح</th>
+        <th class="px-4 py-3 font-extrabold">درصد</th>
+        <th class="px-4 py-3 font-extrabold">پورسانت</th>
+        <th class="px-4 py-3 font-extrabold">وضعیت پرداخت</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr class="border-t border-line">
+        <td class="px-4 py-3">
+          <a class="font-extrabold text-primary" href="{% url 'sale_detail' row.invoice.pk %}">{{ row.invoice.number }}</a>
+          <div class="mt-0.5 text-[11px] font-semibold text-muted">{{ row.invoice.customer.name }} · {{ row.month_label }}</div>
+        </td>
+        <td class="px-4 py-3 font-bold">{{ row.invoice.expert_label }}</td>
+        <td class="whitespace-nowrap px-4 py-3 font-extrabold">{{ row.profit|money:money_unit }}</td>
+        <td class="px-4 py-3">
+          {% if row.level %}
+          <span class="pill" style="color: {{ row.level.color }}; background: {{ row.level.soft }}">{{ row.level_name }}</span>
+          {% else %}
+          <span class="pill bg-slate-100 text-slate-600">{{ row.level_name }}</span>
+          {% endif %}
+        </td>
+        <td class="whitespace-nowrap px-4 py-3 font-extrabold">{{ row.rate|fa }}٪</td>
+        <td class="whitespace-nowrap px-4 py-3 font-extrabold text-primary">{{ row.amount|money:money_unit }}</td>
+        <td class="px-4 py-3">
+          <form method="post" action="{% url 'commission_status' row.invoice.pk %}" class="flex flex-wrap items-center gap-2">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            {% if row.paid %}
+            <span class="pill bg-emerald-50 text-emerald-700">پرداخت‌شده</span>
+            <button class="btn btn-outline !min-h-8 !px-3 !py-1 text-xs" name="paid" value="0" type="submit">برگشت به پرداخت‌نشده</button>
+            {% else %}
+            <span class="pill bg-amber-50 text-amber-700">پرداخت‌نشده</span>
+            <button class="btn btn-green !min-h-8 !px-3 !py-1 text-xs" name="paid" value="1" type="submit">ثبت پرداخت</button>
+            {% endif %}
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="px-4 py-10 text-center font-bold text-muted">فاکتوری با این جستجو پیدا نشد.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if page.paginator.num_pages > 1 %}
+<nav class="mt-4 flex flex-wrap items-center justify-center gap-2" aria-label="صفحه‌های جدول">
+  {% if page.has_previous %}
+  <a class="btn btn-outline !min-h-9 !px-3" href="?{% if filters %}{{ filters }}&{% endif %}page={{ page.previous_page_number }}">قبلی</a>
+  {% endif %}
+  {% for number in page.paginator.page_range %}
+  <a class="grid h-9 min-w-9 place-items-center rounded-lg px-2 text-sm font-extrabold {% if number == page.number %}bg-primary text-white{% else %}bg-white text-muted border border-line hover:text-primary{% endif %}" href="?{% if filters %}{{ filters }}&{% endif %}page={{ number }}">{{ number|fa }}</a>
+  {% endfor %}
+  {% if page.has_next %}
+  <a class="btn btn-outline !min-h-9 !px-3" href="?{% if filters %}{{ filters }}&{% endif %}page={{ page.next_page_number }}">بعدی</a>
+  {% endif %}
+</nav>
+{% endif %}
+{% endblock %}

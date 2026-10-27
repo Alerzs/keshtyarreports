@@ -1,0 +1,11 @@
+{
+  "name": "keshtreport",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./assets/app.css -o ./static/panel/app.css --minify",
+    "watch:css": "tailwindcss -i ./assets/app.css -o ./static/panel/app.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
+  }
+}

@@ -1,0 +1,85 @@
+{% extends "panel/base.html" %}
+{% load panel_tags %}
+{% block title %}کاربران | کشت‌یار{% endblock %}
+{% block content %}
+<header class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="flex items-center gap-3 text-[19px] font-extrabold text-primary-hover">
+    <span class="grid h-[42px] w-[42px] place-items-center rounded-xl bg-gradient-to-br from-primary to-primary-hover text-white"><svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>
+    مدیریت دسترسی کاربران
+  </h1>
+</header>
+<form method="get" class="mb-4 flex flex-wrap items-center gap-2">
+  <a class="btn btn-primary" href="?new=1&q={{ query }}&off={{ show_off|yesno:'1,0' }}">افزودن کاربر جدید</a>
+  <input name="q" value="{{ query }}" class="field max-w-xs" placeholder="جستجوی نام یا آیدی...">
+  <input type="hidden" name="off" value="{% if show_off %}1{% else %}0{% endif %}">
+  <button class="btn btn-outline" type="submit">جستجو</button>
+  <a class="btn btn-outline" href="?off={% if show_off %}0{% else %}1{% endif %}&q={{ query }}">{% if show_off %}پنهان کردن غیرفعال‌ها{% else %}نمایش غیرفعال‌ها{% endif %}</a>
+</form>
+{% if tree %}
+<section class="card mb-4 p-5">
+  <h2 class="font-extrabold">ساختار تیم فروش</h2>
+  <p class="mb-3 text-sm text-muted">هر منتور و کارشناسان زیرمجموعه‌اش. منتور فقط عملکرد همین افراد را می‌بیند.</p>
+  <div class="grid gap-3 md:grid-cols-2">
+    {% for node in tree %}
+    <article class="rounded-2xl border border-line p-4">
+      <div class="font-extrabold text-primary">{{ node.mentor.full_name }} <span class="pill bg-violet-50 text-violet-700">منتور</span></div>
+      <div class="mt-2 flex flex-wrap gap-2">{% for member in node.members %}<span class="pill bg-canvas">{{ member.full_name }}</span>{% empty %}<span class="text-sm text-muted">زیرمجموعه‌ای ندارد.</span>{% endfor %}</div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+<div class="card overflow-hidden">
+  <div class="hidden grid-cols-[1.4fr_.8fr_.8fr_auto] gap-3 bg-canvas px-5 py-3 text-xs font-extrabold text-muted md:grid"><span>اطلاعات کاربر</span><span>جایگاه سازمانی</span><span>آخرین ورود</span><span class="text-left">عملیات</span></div>
+  {% for person in people %}
+  <article class="grid items-center gap-3 border-t border-line px-5 py-4 md:grid-cols-[1.4fr_.8fr_.8fr_auto] {% if not person.is_active %}opacity-60{% endif %}">
+    <div class="flex items-center gap-3">
+      <div class="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-700 font-black text-white">{{ person.full_name|truncatechars:1 }}</div>
+      <div><div class="font-extrabold">{{ person.full_name }}</div><div class="text-xs text-muted" dir="ltr">{{ person.username }}{% if person.expert_name %} · {{ person.expert_name }}{% endif %}</div></div>
+    </div>
+    <div>
+      <span class="pill {% if person.role == 'superadmin' %}bg-ink text-white{% elif person.role == 'manager' %}bg-sky-50 text-sky-800{% elif person.role == 'mentor' %}bg-violet-50 text-violet-700{% else %}bg-emerald-50 text-emerald-700{% endif %}">{{ role_meta|get_item:person.role|get_item:'label'|default:person.role }}</span>
+      {% if person.in_finance %}<span class="pill bg-cyan-50 text-cyan-800">مالی</span>{% endif %}
+      {% if person.mentor %}<div class="mt-1 text-xs text-muted">منتور: {{ person.mentor.full_name }}</div>{% endif %}
+      {% if not person.is_active %}<div class="text-xs font-bold text-red-500">غیرفعال</div>{% endif %}
+    </div>
+    <div class="text-sm text-muted">{{ person.last_login|jdt }}</div>
+    <div class="flex justify-end gap-2">
+      <a class="btn btn-outline" href="?edit={{ person.pk }}">ویرایش</a>
+      <form method="post" action="{% url 'user_toggle' person.pk %}">{% csrf_token %}<button class="btn btn-outline" type="submit">{% if person.is_active %}غیرفعال{% else %}فعال{% endif %}</button></form>
+      <form method="post" action="{% url 'user_delete' person.pk %}" onsubmit="return confirm('این کاربر حذف شود؟')">{% csrf_token %}<button class="btn btn-danger" type="submit">حذف</button></form>
+    </div>
+  </article>
+  {% empty %}<p class="p-8 text-center text-muted">کاربری پیدا نشد.</p>{% endfor %}
+</div>
+{% if open_modal %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-4 backdrop-blur-sm">
+  <form method="post" action="{% url 'user_save' %}" class="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-card bg-white p-6 shadow-2xl">
+    {% csrf_token %}
+    <div class="mb-4 flex items-center justify-between"><h2 class="text-lg font-extrabold">{% if editing %}ویرایش کاربر{% else %}افزودن کاربر{% endif %}</h2><a href="{% url 'users' %}" class="text-muted">بستن</a></div>
+    <input type="hidden" name="original" value="{{ editing.pk|default:'' }}">
+    <div class="grid gap-3 md:grid-cols-2">
+      <div><label class="label">نام و نام خانوادگی</label><input name="full_name" value="{{ editing.full_name }}" class="field" required></div>
+      <div><label class="label">نام کاربری</label><input name="username" value="{{ editing.username }}" class="field" dir="ltr" required></div>
+      <div class="md:col-span-2"><label class="label">رمز عبور {% if editing %}<small class="text-muted">(خالی = بدون تغییر)</small>{% endif %}</label><input name="password" type="password" class="field" dir="ltr"></div>
+    </div>
+    <div class="mt-4 grid gap-2 md:grid-cols-2">
+      {% for value, meta in role_meta.items %}
+      <label class="rounded-2xl border border-line p-3 text-sm {% if editing.role == value or not editing and value == 'specialist' %}ring-2 ring-primary{% endif %}">
+        <input type="radio" name="role" value="{{ value }}" {% if editing.role == value or not editing and value == 'specialist' %}checked{% endif %}>
+        <span class="mr-1 font-extrabold">{{ meta.label }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <label class="mt-4 flex items-center gap-2 rounded-2xl border border-line p-3 text-sm font-bold">
+      <input type="checkbox" name="finance" value="1" {% if editing.in_finance %}checked{% endif %}>
+      عضو گروه مالی
+    </label>
+    <p class="mt-1 text-xs text-muted">اعضای این گروه، مثل مدیر و مدیر کل، بخش‌های چک و وصول، فروش‌ها و پورسانت‌ها را در منو می‌بینند.</p>
+    <div class="mt-4"><label class="label">نام کارشناس در گزارش فروش</label><input name="expert_name" value="{{ editing.expert_name }}" class="field" placeholder="مثال: سارا احمدی"><p class="mt-1 text-xs text-muted">اگر با نام حساب فرق دارد، در گزارش فروش همین نام از روی حساب خوانده می‌شود.</p></div>
+    <div class="mt-3"><label class="label">منتور مسئول</label><select name="mentor" class="field"><option value="">—</option>{% for mentor in mentors %}<option value="{{ mentor.pk }}" {% if editing.mentor_id == mentor.pk %}selected{% endif %}>{{ mentor.full_name }}</option>{% endfor %}</select></div>
+    <div class="mt-5 flex gap-2"><button class="btn btn-primary" type="submit">ذخیره اطلاعات</button><a class="btn btn-outline" href="{% url 'users' %}">انصراف</a></div>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

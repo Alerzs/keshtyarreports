@@ -1,0 +1,41 @@
+@font-face {
+  font-family: Vazirmatn;
+  src: url('fonts/Vazirmatn-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .btn { @apply inline-flex min-h-[42px] items-center justify-center gap-2 rounded-[10px] px-4 py-2.5 text-sm font-bold transition active:scale-[0.98]; }
+  .btn-primary { @apply bg-primary text-white shadow-md shadow-cyan-900/20 hover:-translate-y-0.5 hover:bg-primary-hover; }
+  .btn-outline { @apply border border-line bg-slate-100 text-ink hover:bg-slate-200 hover:text-primary; }
+  .btn-danger { @apply border border-red-300 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white; }
+  .btn-amber { @apply bg-amber-500 text-white hover:brightness-95; }
+  .btn-green { @apply bg-emerald-500 text-white shadow-md shadow-emerald-700/20 hover:-translate-y-0.5; }
+  .card { @apply rounded-card border border-line bg-white shadow-card; }
+  .field { @apply w-full rounded-xl border-2 border-line bg-canvas px-3.5 py-3 text-sm font-semibold text-ink outline-none transition placeholder:font-medium placeholder:text-faint focus:border-primary focus:bg-white focus:ring-4 focus:ring-cyan-700/10; }
+  input::placeholder,
+  textarea::placeholder {
+    direction: rtl;
+    text-align: right;
+  }
+  .label { @apply mb-2 block text-[13.5px] font-bold text-ink; }
+  .pill { @apply inline-flex items-center rounded-lg px-2.5 py-1 text-[11.5px] font-extrabold; }
+  .nav-link { @apply inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[13px] font-bold text-muted transition hover:bg-canvas hover:text-ink; }
+  .nav-link.is-active { @apply bg-primary-soft text-primary; }
+  .chart-range-btn { @apply rounded-lg px-2.5 py-1 text-[11px] font-extrabold text-muted transition hover:text-ink; }
+  .chart-range-btn.is-on { @apply bg-white text-ink shadow-sm; }
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+@keyframes pulse-dot { 0% { box-shadow: 0 0 0 0 rgba(52,211,153,.45); } 70% { box-shadow: 0 0 0 6px rgba(52,211,153,0); } 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); } }
+.live-dot { animation: pulse-dot 2s infinite; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }

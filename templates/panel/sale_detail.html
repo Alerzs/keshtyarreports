@@ -1,0 +1,129 @@
+{% extends "panel/base.html" %}
+{% load panel_tags %}
+{% block title %}{{ invoice.number }} | فروش‌ها{% endblock %}
+{% block content %}
+<header class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <a href="{% url 'sales' %}" class="text-xs font-extrabold text-primary">بازگشت به فروش‌ها</a>
+    <h1 class="mt-1 text-[19px] font-extrabold text-primary-hover" dir="ltr">{{ invoice.number }}</h1>
+    <p class="mt-1 text-sm font-semibold text-muted">
+      <a class="text-ink hover:text-primary" href="{% url 'customer_profile' invoice.customer_id %}">{{ invoice.customer.name }}</a>
+      · {{ invoice.expert_label }} · {{ invoice.sold_on|jdate }} · {{ invoice.settlement }} · {{ invoice.status }}
+    </p>
+  </div>
+</header>
+
+<section class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+  <article class="card p-4"><div class="text-xs font-bold text-muted">مبلغ فروش</div><b class="mt-1 block text-lg">{{ figures.sale|money:money_unit }}</b></article>
+  <article class="card p-4">
+    <div class="text-xs font-bold text-muted">مبلغ خرید</div>
+    <b class="mt-1 block text-lg">{{ figures.cost|money:money_unit }}</b>
+    <form method="post" action="{% url 'sale_purchase' invoice.pk %}" class="mt-3 flex items-center gap-2">{% csrf_token %}
+      <input name="purchase_amount" value="{{ invoice.purchase_amount }}" class="field !min-h-9 !py-2" inputmode="numeric" aria-label="ویرایش مبلغ خرید">
+      <button class="btn btn-primary !min-h-9 shrink-0 !px-3" type="submit">ثبت</button>
+    </form>
+  </article>
+  <article class="card p-4"><div class="text-xs font-bold text-muted">جمع دریافتی</div><b class="mt-1 block text-lg text-emerald-700">{{ figures.received|money:money_unit }}</b></article>
+  <article class="card p-4"><div class="text-xs font-bold text-muted">باقی‌مانده حساب</div><b class="mt-1 block text-lg {% if figures.outstanding %}text-rose-600{% endif %}">{{ figures.outstanding|money:money_unit }}</b></article>
+</section>
+
+<section class="card mb-5 p-5">
+  <h2 class="mb-3 text-lg font-extrabold">اقلام فاکتور</h2>
+  <div class="overflow-auto">
+    <table class="w-full text-right text-sm">
+      <thead class="text-muted"><tr><th class="py-2 font-extrabold">کالا</th><th class="font-extrabold">تعداد</th><th class="font-extrabold">قیمت واحد</th><th class="font-extrabold">مبلغ</th></tr></thead>
+      <tbody>
+        {% for line in lines %}
+        <tr class="border-t border-line">
+          <td class="py-2 font-bold">{{ line.product }}</td>
+          <td>{{ line.qty|fa }}</td>
+          <td class="whitespace-nowrap">{{ line.unit_price|money:money_unit }}</td>
+          <td class="whitespace-nowrap font-extrabold">{{ line.amount|money:money_unit }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="py-6 text-center text-muted">قلمی ثبت نشده است.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if invoice.note %}<p class="mt-3 text-sm text-muted">{{ invoice.note }}</p>{% endif %}
+</section>
+
+<section class="grid gap-5 lg:grid-cols-2">
+  <article class="card p-5">
+    <h2 class="text-lg font-extrabold">پرداخت نقدی</h2>
+    <p class="mb-4 mt-1 text-sm font-semibold text-muted">مجموع پرداخت نقدی حداکثر به اندازه تفاضل مبلغ فاکتور و جمع چک‌هاست. سقف باقی‌مانده {{ figures.room|toman }} تومان است.</p>
+    {% if payments %}
+    <ul class="mb-4 space-y-2">
+      {% for pay in payments %}
+      <li class="rounded-xl bg-canvas px-3 py-2 text-sm">
+        <div class="flex items-center justify-between gap-2">
+          <span class="font-extrabold">{{ pay.method }}</span>
+          <span class="font-extrabold">{{ pay.amount|money:money_unit }}</span>
+        </div>
+        <div class="mt-1 text-xs font-semibold text-muted">{{ pay.paid_on|jdate }}{% if pay.note %} · {{ pay.note }}{% endif %}</div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="mb-4 text-sm font-semibold text-muted">پرداخت نقدی ثبت نشده است.</p>
+    {% endif %}
+    {% if figures.room %}
+    <form method="post" action="{% url 'sale_payment' invoice.pk %}" class="grid gap-3">{% csrf_token %}
+      <div>
+        <label class="label" for="pay-amount">مبلغ (تومان)</label>
+        <input id="pay-amount" name="amount" class="field" inputmode="numeric" placeholder="مثلاً ۱٬۰۰۰٬۰۰۰" required>
+      </div>
+      <div>
+        <label class="label" for="pay-method">روش</label>
+        <select id="pay-method" name="method" class="field" required>
+          {% for method in pay_methods %}<option value="{{ method }}">{{ method }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="label" for="pay-date">تاریخ</label>
+        <input id="pay-date" name="paid_on" class="field cursor-pointer" data-jdate readonly placeholder="۱۴۰۵/۰۶/۱۲" value="{{ today|jdate }}" required>
+      </div>
+      <div>
+        <label class="label" for="pay-note">یادداشت</label>
+        <input id="pay-note" name="note" class="field" placeholder="اختیاری">
+      </div>
+      <button class="btn btn-green" type="submit">ثبت پرداخت</button>
+    </form>
+    {% else %}
+    <p class="rounded-xl bg-amber-50 px-3 py-3 text-sm font-bold text-amber-800">سقف پرداخت نقدی این فاکتور پر شده است.</p>
+    {% endif %}
+  </article>
+
+  <article class="card p-5">
+    <h2 class="text-lg font-extrabold">چک‌ها</h2>
+    <p class="mb-4 mt-1 text-sm font-semibold text-muted">جمع چک‌ها {{ figures.checks|toman }} تومان است. وصول، مبلغ را به دریافتی فاکتور اضافه می‌کند.</p>
+    {% for chk in checks %}
+    <div class="rounded-xl bg-canvas px-3 py-3 {% if not forloop.first %}mt-2{% endif %}">
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-sm font-extrabold">چک {{ chk.number|default:"بدون شماره" }}</span>
+        <span class="pill {{ chk.status|check_tone }}">{{ chk.status }}</span>
+      </div>
+      <dl class="mt-2 grid grid-cols-2 gap-2 text-sm">
+        <div><dt class="text-[11px] font-bold text-muted">مبلغ</dt><dd class="mt-0.5 font-extrabold">{{ chk.amount|money:money_unit }}</dd></div>
+        <div><dt class="text-[11px] font-bold text-muted">سررسید</dt><dd class="mt-0.5 font-extrabold">{{ chk.due_on|jdate }}</dd></div>
+      </dl>
+      <div class="mt-3 flex flex-wrap gap-2">
+        {% if chk.status != 'وصول‌شده' %}
+        <form method="post" action="{% url 'sale_collect' invoice.pk chk.pk %}">{% csrf_token %}
+          <button class="btn btn-green !min-h-9 !px-3 !py-1.5" type="submit">وصول شد</button>
+        </form>
+        {% endif %}
+        {% if chk.status != 'برگشتی' %}
+        <form method="post" action="{% url 'sale_bounce' invoice.pk chk.pk %}">{% csrf_token %}
+          <button class="btn btn-danger !min-h-9 !px-3 !py-1.5" type="submit">برگشت خورد</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% empty %}
+    <p class="text-sm font-semibold text-muted">چکی برای این فاکتور ثبت نشده است.</p>
+    {% endfor %}
+  </article>
+</section>
+{% endblock %}

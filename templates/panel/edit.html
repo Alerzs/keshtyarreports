@@ -1,0 +1,83 @@
+{% extends "panel/base.html" %}
+{% load panel_tags %}
+{% block title %}ویرایش اطلاعات | کشت‌یار{% endblock %}
+{% block content %}
+<header class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="flex items-center gap-3 text-[19px] font-extrabold text-primary-hover">
+    <span class="grid h-[42px] w-[42px] place-items-center rounded-xl bg-gradient-to-br from-primary to-primary-hover text-white"><svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2.4"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></span>
+    بروزرسانی و ویرایش اطلاعات
+  </h1>
+  <a class="btn btn-outline" href="{% url 'customers' %}">دایرکتوری مشتریان</a>
+</header>
+<div class="grid gap-5 lg:grid-cols-[240px_1fr]">
+  <aside class="card h-max p-3">
+    <a href="?tab=customers" class="mb-1 flex items-center gap-2 rounded-xl px-3 py-3 text-sm font-bold {% if tab == 'customers' %}bg-primary-soft text-primary{% else %}text-muted hover:bg-canvas{% endif %}">ویرایش مشتریان</a>
+    <a href="?tab=invoices" class="mb-1 flex items-center gap-2 rounded-xl px-3 py-3 text-sm font-bold {% if tab == 'invoices' %}bg-primary-soft text-primary{% else %}text-muted hover:bg-canvas{% endif %}">ویرایش فاکتورها</a>
+    <a href="?tab=payments" class="mb-1 flex items-center gap-2 rounded-xl px-3 py-3 text-sm font-bold {% if tab == 'payments' %}bg-primary-soft text-primary{% else %}text-muted hover:bg-canvas{% endif %}">ویرایش پرداختی‌ها</a>
+    <a href="?tab=checks" class="flex items-center gap-2 rounded-xl px-3 py-3 text-sm font-bold {% if tab == 'checks' %}bg-primary-soft text-primary{% else %}text-muted hover:bg-canvas{% endif %}">ویرایش چک‌ها</a>
+  </aside>
+  <main class="card p-6 md:p-8">
+    {% if tab == 'customers' %}
+    <h2 class="text-xl font-extrabold">اطلاعات هویتی و پروفایل مشتری</h2>
+    <p class="mb-5 mt-1 text-sm font-semibold text-muted">کاربر مورد نظر را پیدا کنید و اطلاعات تماس را اصلاح کنید. نام، شناسه‌ی یکتاست.</p>
+    <form method="get" class="mb-4 flex gap-2"><input type="hidden" name="tab" value="customers"><input name="q" value="{{ q }}" class="field" placeholder="نام مشتری را تایپ کنید..."><button class="btn btn-outline" type="submit">جستجو</button></form>
+    <div class="mb-5 flex flex-wrap gap-2">{% for c in customers %}<a class="pill border border-sky-200 bg-primary-soft text-sky-800 {% if selected_customer.pk == c.pk %}ring-2 ring-primary{% endif %}" href="?tab=customers&customer={{ c.pk }}">{{ c.name }}</a>{% endfor %}</div>
+    {% if selected_customer %}
+    <form method="post" action="{% url 'edit_customer' %}" class="grid gap-4 md:grid-cols-2">{% csrf_token %}
+      <input type="hidden" name="id" value="{{ selected_customer.pk }}">
+      <div><label class="label">نام ثبت‌شده</label><input class="field" value="{{ selected_customer.name }}" disabled></div>
+      <div><label class="label">شماره تماس</label><input name="phone" value="{{ selected_customer.phone }}" class="field" dir="ltr"></div>
+      <div><label class="label">دسته‌بندی</label><input name="customer_type" value="{{ selected_customer.customer_type }}" class="field"></div>
+      <div><label class="label">استان / شهر</label><input name="city" value="{{ selected_customer.city }}" class="field"></div>
+      <div class="md:col-span-2"><label class="label">آدرس</label><textarea name="address" class="field" rows="3">{{ selected_customer.address }}</textarea></div>
+      <div><button class="btn btn-green" type="submit">ذخیره تغییرات مشتری</button></div>
+    </form>
+    {% endif %}
+    {% elif tab == 'invoices' %}
+    <h2 class="text-xl font-extrabold">مدیریت فاکتورهای فروش</h2>
+    <p class="mb-5 mt-1 text-sm text-muted">وضعیت تسویه و توضیحات فاکتور را اصلاح کنید.</p>
+    <form method="get" class="mb-4 flex gap-2"><input type="hidden" name="tab" value="invoices"><input name="q" value="{{ q }}" class="field" placeholder="شماره فاکتور یا نام مشتری"><button class="btn btn-outline">جستجو</button></form>
+    <div class="mb-5 flex flex-wrap gap-2">{% for inv in invoices %}<a class="pill border border-line bg-canvas {% if selected_invoice.pk == inv.pk %}ring-2 ring-primary{% endif %}" href="?tab=invoices&invoice={{ inv.pk }}">{{ inv.number }} — {{ inv.customer.name }}</a>{% endfor %}</div>
+    {% if selected_invoice %}
+    <form method="post" action="{% url 'edit_invoice' %}" class="grid gap-4 md:grid-cols-2">{% csrf_token %}
+      <input type="hidden" name="id" value="{{ selected_invoice.pk }}">
+      <div><label class="label">شماره فاکتور</label><input class="field" value="{{ selected_invoice.number }}" disabled></div>
+      <div><label class="label">مشتری</label><input class="field" value="{{ selected_invoice.customer.name }}" disabled></div>
+      <div><label class="label">نوع تسویه</label><input name="settlement" value="{{ selected_invoice.settlement }}" class="field"></div>
+      <div><label class="label">وضعیت</label><select name="status" class="field">{% for st in invoice_statuses %}<option {% if selected_invoice.status == st %}selected{% endif %}>{{ st }}</option>{% endfor %}</select></div>
+      <div class="md:col-span-2"><label class="label">توضیحات</label><textarea name="note" class="field" rows="3">{{ selected_invoice.note }}</textarea></div>
+      <label class="flex items-center gap-2 text-sm font-bold"><input type="checkbox" name="commission_paid" value="1" {% if selected_invoice.commission_paid %}checked{% endif %}> پورسانت این فاکتور پرداخت شده</label>
+      <div class="md:col-span-2"><button class="btn btn-green" type="submit">ذخیره تغییرات فاکتور</button></div>
+    </form>
+    {% endif %}
+    {% elif tab == 'payments' %}
+    <h2 class="text-xl font-extrabold">ویرایش سوابق پرداختی</h2>
+    <div class="mb-4 flex flex-wrap gap-2">{% for pay in payments %}<a class="pill border border-line bg-canvas" href="?tab=payments&payment={{ pay.pk }}">{{ pay.invoice.number }} · {{ pay.amount|toman }}</a>{% endfor %}</div>
+    {% if selected_payment %}
+    <form method="post" action="{% url 'edit_payment' %}" class="grid gap-4 md:grid-cols-2">{% csrf_token %}
+      <input type="hidden" name="id" value="{{ selected_payment.pk }}">
+      <div><label class="label">مبلغ</label><input name="amount" value="{{ selected_payment.amount }}" class="field" dir="ltr"></div>
+      <div><label class="label">روش</label><select name="method" class="field">{% for m in pay_methods %}<option {% if selected_payment.method == m %}selected{% endif %}>{{ m }}</option>{% endfor %}</select></div>
+      <div><label class="label">تاریخ</label><input name="paid_on" value="{{ selected_payment.paid_on|jdate }}" class="field cursor-pointer" data-jdate readonly placeholder="۱۴۰۵/۰۶/۱۲"></div>
+      <div><label class="label">یادداشت</label><input name="note" value="{{ selected_payment.note }}" class="field"></div>
+      <div><button class="btn btn-green" type="submit">ذخیره پرداخت</button></div>
+    </form>
+    {% endif %}
+    {% elif tab == 'checks' %}
+    <h2 class="text-xl font-extrabold">ویرایش چک‌ها</h2>
+    <div class="mb-4 flex flex-wrap gap-2">{% for chk in checks %}<a class="pill border border-line bg-canvas" href="?tab=checks&check={{ chk.pk }}">{{ chk.number|default:chk.invoice.number }} · {{ chk.status }}</a>{% endfor %}</div>
+    {% if selected_check %}
+    <form method="post" action="{% url 'edit_check' %}" enctype="multipart/form-data" class="grid gap-4 md:grid-cols-2">{% csrf_token %}
+      <input type="hidden" name="id" value="{{ selected_check.pk }}">
+      <div><label class="label">شماره چک</label><input name="number" value="{{ selected_check.number }}" class="field" dir="ltr"></div>
+      <div><label class="label">مبلغ</label><input name="amount" value="{{ selected_check.amount }}" class="field" dir="ltr"></div>
+      <div><label class="label">سررسید</label><input name="due_on" value="{{ selected_check.due_on|jdate }}" class="field cursor-pointer" data-jdate readonly placeholder="۱۴۰۵/۰۶/۱۲"></div>
+      <div><label class="label">وضعیت</label><select name="status" class="field">{% for st in check_states %}<option {% if selected_check.status == st %}selected{% endif %}>{{ st }}</option>{% endfor %}</select></div>
+      <div class="md:col-span-2"><label class="label">تصویر چک</label><input type="file" name="image" accept="image/*,.pdf"></div>
+      <div><button class="btn btn-green" type="submit">ذخیره چک</button></div>
+    </form>
+    {% endif %}
+    {% endif %}
+  </main>
+</div>
+{% endblock %}

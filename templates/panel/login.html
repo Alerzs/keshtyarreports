@@ -1,0 +1,49 @@
+{% extends "panel/base.html" %}
+{% block title %}ورود به سیستم | کشت‌یار{% endblock %}
+{% block body %}
+<div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-ink px-5">
+  <div class="absolute -left-24 -top-24 h-[450px] w-[450px] rounded-full bg-sky-500 opacity-60 blur-[80px]"></div>
+  <div class="absolute -bottom-12 -right-12 h-[350px] w-[350px] rounded-full bg-emerald-500 opacity-60 blur-[80px]"></div>
+  <div class="absolute left-1/2 top-[40%] h-[300px] w-[300px] -translate-x-1/2 rounded-full bg-blue-500 opacity-50 blur-[80px]"></div>
+
+  <div class="relative z-10 w-full max-w-[440px] rounded-[28px] bg-white/95 px-10 py-11 text-center shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] backdrop-blur">
+    <div class="mx-auto mb-5 grid h-[68px] w-[68px] place-items-center rounded-[20px] bg-gradient-to-br from-sky-500 to-sky-600 text-white shadow-xl shadow-sky-500/40">
+      <svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" fill="none" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+    </div>
+    <h1 class="mb-2 text-2xl font-extrabold text-ink">ورود به CRM کشت‌یار</h1>
+    <p class="mb-8 text-sm font-semibold text-muted">جهت دسترسی به داشبورد، مشخصات خود را وارد کنید</p>
+
+    {% if error %}
+    <div class="mb-5 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-right text-sm font-bold text-red-500">
+      <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+      <span>{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="mb-5 text-right">
+        <label class="label" for="username">نام کاربری سیستم</label>
+        <div class="relative">
+          <svg class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-faint" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <input id="username" name="username" value="{{ username }}" dir="ltr" autocomplete="username" placeholder="مثلاً admin" class="field py-[15px] pr-12 {% if error %}border-red-500 bg-red-50{% endif %}">
+        </div>
+      </div>
+      <div class="mb-2 text-right">
+        <label class="label" for="password">رمز عبور</label>
+        <div class="relative">
+          <svg class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-faint" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <input id="password" name="password" type="password" dir="ltr" autocomplete="current-password" placeholder="••••••••" class="field py-[15px] pl-12 pr-12 {% if error %}border-red-500 bg-red-50{% endif %}">
+          <button type="button" class="absolute left-2 top-1/2 -translate-y-1/2 rounded-[10px] p-2 text-faint hover:bg-slate-100 hover:text-sky-500" onclick="const p=document.getElementById('password'); p.type = p.type==='password'?'text':'password'">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
+        </div>
+      </div>
+      <button class="mt-4 flex w-full items-center justify-center gap-2 rounded-[14px] bg-sky-500 px-4 py-4 text-base font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-sky-600 hover:shadow-xl hover:shadow-sky-500/40" type="submit">
+        تایید و ورود به داشبورد
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

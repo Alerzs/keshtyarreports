@@ -1,0 +1,562 @@
+{% extends "panel/base.html" %}
+{% load static panel_tags %}
+{% block title %}داشبورد زنده مدیریت فروش | کشت‌یار{% endblock %}
+{% block head %}
+<style>
+  .chart-share { display: flex; min-width: 0; flex: 1; flex-direction: column; justify-content: center; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .chart-share li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; column-gap: 10px; border-radius: 14px; background: #f8fafc; padding: 8px 10px; }
+  .chart-share .swatch { width: 10px; height: 10px; border-radius: 999px; }
+  .chart-share .name { font-size: 12.5px; font-weight: 800; color: #0f172a; }
+  .chart-share .meta { margin-top: 2px; font-size: 11px; font-weight: 700; color: #64748b; }
+  .chart-share .pct { font-size: 14px; font-weight: 900; color: #0e7490; }
+  .chart-share .chart-piece { display: block; width: 100%; margin-top: 2px; padding: 0; border: 0; background: transparent; text-align: right; font: inherit; font-size: 11px; font-weight: 800; color: #0e7490; cursor: pointer; }
+  .chart-share .chart-piece:hover { text-decoration: underline; }
+  .chart-hint { margin: 10px 0 0; font-size: 11.5px; font-weight: 700; color: #64748b; }
+  .chart-levels { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+  .chart-levels li { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; background: #f8fafc; padding: 4px 10px; font-size: 11.5px; font-weight: 800; color: #334155; }
+  .chart-levels .swatch { width: 10px; height: 10px; border-radius: 999px; }
+  .chart-span { display: inline-flex; max-width: 100%; flex-wrap: wrap; align-items: center; gap: 4px; border-radius: 12px; background: #f8fafc; padding: 4px; }
+  .chart-span-field { display: inline-flex; min-width: 0; align-items: center; gap: 4px; border-radius: 8px; background: #fff; padding: 2px 4px 2px 8px; font-size: 11px; font-weight: 800; color: #64748b; }
+  .chart-span select { max-width: 8.5rem; cursor: pointer; border: 0; background: transparent; padding: 2px 0; font: inherit; font-weight: 800; color: #0f172a; outline: none; }
+  .card.is-loading, [data-kpis].is-loading { opacity: 0.55; }
+  .check-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .check-nav-btn { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; color: #0f172a; cursor: pointer; }
+  .check-nav-btn:hover:not(:disabled) { border-color: #a5f3fc; color: #0e7490; }
+  .check-nav-btn:disabled { opacity: 0.35; cursor: default; }
+  .check-month-title { margin: 0; font-size: 15px; font-weight: 800; }
+  .check-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .check-head { padding: 2px 0 6px; text-align: center; font-size: 11px; font-weight: 800; color: #64748b; }
+  .check-day { min-height: 46px; border-radius: 10px; background: #f8fafc; padding: 4px; }
+  .check-num { font-size: 11px; font-weight: 800; color: #334155; }
+  .check-chip { display: block; margin-top: 4px; border-radius: 8px; background: #fff; padding: 3px 4px; font-size: 10px; font-weight: 800; line-height: 1.35; color: #0e7490; text-decoration: none; overflow-wrap: anywhere; }
+  .check-chip:hover { color: #155e75; }
+  .check-chip.is-cleared { background: #ecfdf5; color: #047857; }
+  .check-chip.is-pending { background: #fffbeb; color: #b45309; }
+  .check-chip.is-bounced { background: #fef2f2; color: #b91c1c; }
+  .check-chip.is-cleared:hover { color: #065f46; }
+  .check-chip.is-pending:hover { color: #92400e; }
+  .check-chip.is-bounced:hover { color: #991b1b; }
+  .check-amt { display: block; margin-top: 1px; font-weight: 800; color: #0f172a; }
+  .check-state { display: block; margin-top: 1px; font-weight: 800; color: #64748b; }
+  .check-chip.is-cleared .check-state { color: #047857; }
+  .check-chip.is-pending .check-state { color: #b45309; }
+  .check-chip.is-bounced .check-state { color: #b91c1c; }
+  .check-empty { margin: 8px 0 0; font-size: 13px; font-weight: 700; color: #64748b; }
+  body.chart-customers-open { overflow: hidden; }
+  .chart-customers-page { position: fixed; z-index: 40; right: 0; bottom: 0; left: 0; overflow: auto; background: #f8fafc; }
+  .chart-customers-page[hidden] { display: none; }
+  .chart-customers-sheet { width: min(1450px, calc(100% - 1.5rem)); margin: 0 auto; padding: 28px 0 48px; }
+  .chart-customers-back { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; padding: 8px 14px; font: inherit; font-size: 13px; font-weight: 800; color: #0f172a; cursor: pointer; box-shadow: 0 10px 30px -5px rgba(0,0,0,0.05); }
+  .chart-customers-back:hover { color: #0e7490; }
+  .chart-customers-head { margin-top: 18px; }
+  .chart-customers-head p { font-size: 12.5px; font-weight: 800; color: #0e7490; }
+  .chart-customers-head h2 { margin-top: 4px; font-size: 24px; font-weight: 900; color: #0f172a; }
+  .chart-customers-head span { display: inline-flex; margin-top: 10px; border-radius: 999px; background: #fff; border: 1px solid #e2e8f0; padding: 4px 10px; font-size: 12px; font-weight: 800; color: #64748b; }
+  .chart-customers-table { margin-top: 18px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 20px; background: #fff; box-shadow: 0 10px 30px -5px rgba(0,0,0,0.05); }
+  .chart-customers-table table { width: 100%; border-collapse: collapse; text-align: right; font-size: 13px; }
+  .chart-customers-table th { position: sticky; top: 0; background: #f8fafc; padding: 12px 16px; font-weight: 800; color: #64748b; }
+  .chart-customers-table td { border-top: 1px solid #e2e8f0; padding: 12px 16px; }
+  .chart-customers-table tr:hover td { background: #f8fafc; }
+  .chart-customers-table a { font-weight: 800; color: #0e7490; }
+  .chart-customers-table a:hover { text-decoration: underline; }
+  .chart-customers-table .amount { font-weight: 800; color: #0e7490; white-space: nowrap; }
+  .chart-customers-empty { padding: 32px 16px; text-align: center; font-weight: 700; color: #64748b; }
+</style>
+{% endblock %}
+{% block content %}
+<header class="relative overflow-hidden rounded-3xl bg-gradient-to-l from-slate-800 to-ink px-6 py-6 text-white shadow-[0_16px_40px_rgba(15,23,42,.16)]">
+  <div class="pointer-events-none absolute -left-10 -top-16 h-48 w-48 rounded-full bg-sky-400/15"></div>
+  <div class="relative flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <div class="flex items-center gap-2 text-[13px] font-semibold text-white/75">
+        <span class="live-dot h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_0_4px_rgba(52,211,153,.2)]"></span>
+        {% if crm_scope == 'all' %}پایگاه فروش{% else %}{{ user.full_name|default:user.username }}{% endif %}
+        <span class="text-white/40">·</span>
+        <span>{{ synced_at }}</span>
+      </div>
+      <h1 class="mt-2 text-2xl font-black md:text-[28px]">
+        {% if crm_scope == 'self' %}مسیر رشد و عملکرد من{% elif crm_scope == 'team' %}عملکرد تیم من{% else %}داشبورد مدیریت فروش{% endif %}
+      </h1>
+    </div>
+    <div class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur">
+      <div class="text-[11px] font-semibold text-white/70">فاکتور در بازه انتخاب‌شده</div>
+      <div class="mt-0.5 text-2xl font-black leading-none">{{ invoice_count|fa }}</div>
+    </div>
+  </div>
+</header>
+
+{% if tab == 'overview' %}
+<div class="mt-6 flex flex-wrap items-center justify-end" data-kpi-panel>
+  <div class="chart-span" role="group" aria-label="بازه زمانی شاخص‌ها">
+    <label class="chart-span-field">
+      <span>از</span>
+      <select data-from aria-label="از ماه شاخص‌ها">
+        {% for item in period_months reversed %}
+        <option value="{{ item.key }}" {% if forloop.first %}selected{% endif %}>{{ item.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="chart-span-field">
+      <span>تا</span>
+      <select data-to aria-label="تا ماه شاخص‌ها">
+        {% for item in period_months reversed %}
+        <option value="{{ item.key }}" {% if forloop.last %}selected{% endif %}>{{ item.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+</div>
+<section class="mt-3 grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-5" data-kpis>
+  {% for kpi in kpis %}
+  <article class="group relative min-h-[140px] min-w-0 overflow-hidden rounded-[20px] border border-line bg-white p-[22px] shadow-card transition duration-300 hover:-translate-y-1 hover:shadow-lift lg:p-4"
+    {% if kpi.tone == 'c1' %}border-b-[3px] border-b-[#0e7490]
+    {% elif kpi.tone == 'c2' %}border-b-[3px] border-b-[#059669]
+    {% elif kpi.tone == 'c3' %}border-b-[3px] border-b-[#e11d48]
+    {% elif kpi.tone == 'c4' %}border-b-[3px] border-b-[#d97706]
+    {% elif kpi.tone == 'c5' %}border-b-[3px] border-b-[#6d28d9]
+    {% elif kpi.tone == 'c6' %}border-b-[3px] border-b-[#2563eb]
+    {% elif kpi.tone == 'c7' %}border-b-[3px] border-b-[#0d9488]
+    {% else %}border-b-[3px] border-b-[#4f46e5]{% endif %}">
+    <span class="pointer-events-none absolute -bottom-12 -left-12 h-[120px] w-[120px] rounded-full opacity-60 transition duration-300 group-hover:scale-125 group-hover:opacity-100
+      {% if kpi.tone == 'c1' %}bg-[#cffafe]
+      {% elif kpi.tone == 'c2' %}bg-[#d1fae5]
+      {% elif kpi.tone == 'c3' %}bg-[#ffe4e6]
+      {% elif kpi.tone == 'c4' %}bg-[#fef3c7]
+      {% elif kpi.tone == 'c5' %}bg-[#ede9fe]
+      {% elif kpi.tone == 'c6' %}bg-[#dbeafe]
+      {% elif kpi.tone == 'c7' %}bg-[#ccfbf1]
+      {% else %}bg-[#e0e7ff]{% endif %}"></span>
+    <div class="relative z-[1] flex items-center justify-between gap-2.5">
+      <span class="min-w-0 text-sm font-extrabold leading-snug text-muted lg:text-[13px]">{{ kpi.label }}</span>
+      <span class="grid h-[46px] w-[46px] shrink-0 place-items-center rounded-[14px] bg-white shadow-[0_4px_12px_rgba(0,0,0,0.04)]
+        {% if kpi.tone == 'c1' %}text-[#0e7490]
+        {% elif kpi.tone == 'c2' %}text-[#059669]
+        {% elif kpi.tone == 'c3' %}text-[#e11d48]
+        {% elif kpi.tone == 'c4' %}text-[#d97706]
+        {% elif kpi.tone == 'c5' %}text-[#6d28d9]
+        {% elif kpi.tone == 'c6' %}text-[#2563eb]
+        {% elif kpi.tone == 'c7' %}text-[#0d9488]
+        {% else %}text-[#4f46e5]{% endif %}">
+        {% if kpi.key == 'total' %}
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        {% elif kpi.key == 'received' %}
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+        {% elif kpi.key == 'outstanding' %}
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        {% elif kpi.key == 'profit' %}
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+        {% elif kpi.key == 'count' %}
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+        {% endif %}
+      </span>
+    </div>
+    <div class="relative z-[1] mt-5 text-right text-[28px] font-black leading-none text-ink lg:text-[1.35rem] xl:text-[1.55rem]" dir="ltr" data-kpi="{{ kpi.key }}"{% if kpi.plain %} data-plain{% endif %}>{% if kpi.plain %}{{ kpi.value|fa }}{% else %}{{ kpi.value|toman }}{% endif %}</div>
+    <div class="relative z-[1] mt-2 text-[11.5px] font-semibold text-muted">{{ kpi.note }}</div>
+  </article>
+  {% endfor %}
+</section>
+
+<section class="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
+  {% include "panel/partials/chart.html" with chart_id="dailyChart" title="روند فروش و سود" subtitle="مجموع فروش و سود در هر ماه" box="h-[380px]" span="lg:col-span-2" click_customers=True %}
+  {% include "panel/partials/chart.html" with chart_id="ticketChart" title="توزیع تعداد فاکتورها" subtitle="تعداد فاکتور در هر اندازه" box="h-[300px]" layout="share" click_customers=True %}
+  {% include "panel/partials/chart.html" with chart_id="saleTypeChart" title="سهم فروش نقدی و قسطی" subtitle="نسبت تسویه فوری به فروش مدت‌دار" box="h-[300px]" layout="share" click_customers=True %}
+  {% include "panel/partials/chart.html" with chart_id="customerTypeChart" title="تفکیک نوع مشتریان" subtitle="حجم ریالی به تفکیک صنف" box="h-[300px]" click_customers=True %}
+  {% include "panel/partials/chart.html" with chart_id="provinceChart" title="پراکندگی فروش شهرها" subtitle="بر اساس شهر ثبت‌شده مشتری" box="h-[300px]" click_customers=True %}
+  {% include "panel/partials/chart.html" with chart_id="productChart" title="پرفروش‌ترین محصولات" subtitle="پانزده کالای برتر بر اساس مبلغ فروش" box="h-[340px]" click_customers=True %}
+  {% include "panel/partials/chart.html" with chart_id="monthlyTypeChart" title="مقایسه ماهانه فروش نقدی و قسطی" subtitle="ترکیب تسویه در هر ماه" box="h-[340px]" click_customers=True %}
+  <article class="card p-6 lg:col-span-2">
+    <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <div><h2 class="text-lg font-extrabold">رتبه‌بندی و ارزش‌آفرینی مشتریان</h2><p class="mt-1 text-[13px] font-semibold text-muted">کلیک روی سطر، پرونده‌ی مشتری را باز می‌کند</p></div>
+      <span class="pill border border-line bg-slate-100">{{ board|length|fa }} مشتری</span>
+    </div>
+    <div class="max-h-[400px] overflow-auto rounded-2xl border border-line">
+      <table class="w-full border-collapse text-center text-[13px]">
+        <thead class="sticky top-0 bg-canvas text-muted"><tr>
+          <th class="px-4 py-3 font-extrabold">رتبه</th>
+          <th class="px-4 py-3 font-extrabold">نام مشتری</th>
+          <th class="px-4 py-3 font-extrabold">تعداد سفارش</th>
+          <th class="px-4 py-3 font-extrabold">مجموع خرید</th>
+          <th class="px-4 py-3 font-extrabold">سودآوری</th>
+          <th class="px-4 py-3 font-extrabold">حاشیه سود</th>
+        </tr></thead>
+        <tbody>
+          {% for row in board %}
+          <tr class="border-t border-line hover:bg-canvas">
+            <td class="px-4 py-3 font-bold">{{ forloop.counter|fa }}</td>
+            <td class="px-4 py-3 font-extrabold"><a class="text-primary" href="{% url 'customer_profile' row.id %}">{{ row.name }}</a></td>
+            <td class="px-4 py-3">{{ row.count|fa }}</td>
+            <td class="whitespace-nowrap px-4 py-3 font-extrabold text-primary">{{ row.sales|money:money_unit }}</td>
+            <td class="whitespace-nowrap px-4 py-3">{{ row.profit|money:money_unit }}</td>
+            <td class="px-4 py-3">{{ row.margin|fa }}٪</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="px-4 py-8 text-center text-muted">در این بازه فاکتوری نیست.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+<article class="card mt-5 p-6">
+  <div class="mb-4">
+    <h2 class="text-lg font-extrabold">مشتریان ثابت و جدید</h2>
+    <p class="mt-1 text-[13px] font-semibold text-muted">سهم فروش و سود هر کارشناس از مشتری تکراری و مشتری تازه‌وارد</p>
+  </div>
+  <div class="overflow-auto rounded-2xl border border-line">
+    <table class="w-full border-collapse text-center text-[13px]">
+      <thead class="bg-canvas text-muted"><tr>
+        <th class="px-4 py-3 font-extrabold">کارشناس</th>
+        <th class="px-4 py-3 font-extrabold">فروش ثابت</th>
+        <th class="px-4 py-3 font-extrabold">فروش جدید</th>
+        <th class="px-4 py-3 font-extrabold">سود ثابت</th>
+        <th class="px-4 py-3 font-extrabold">سود جدید</th>
+        <th class="px-4 py-3 font-extrabold">معامله ثابت</th>
+        <th class="px-4 py-3 font-extrabold">معامله جدید</th>
+      </tr></thead>
+      <tbody>
+        {% for row in team_rows %}
+        <tr class="border-t border-line hover:bg-canvas">
+          <td class="px-4 py-3 font-extrabold">{{ row.name }}</td>
+          <td class="whitespace-nowrap px-4 py-3">{{ row.salesRepeat|money:money_unit }}</td>
+          <td class="whitespace-nowrap px-4 py-3">{{ row.salesOnce|money:money_unit }}</td>
+          <td class="whitespace-nowrap px-4 py-3">{{ row.profitRepeat|money:money_unit }}</td>
+          <td class="whitespace-nowrap px-4 py-3">{{ row.profitOnce|money:money_unit }}</td>
+          <td class="px-4 py-3">{{ row.dealsRepeat|fa }}</td>
+          <td class="px-4 py-3">{{ row.dealsOnce|fa }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="px-4 py-8 text-center text-muted">کارشناسی در این بازه نیست.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</article>
+{% endif %}
+
+{% if tab == 'finance' %}
+<section class="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
+  <article id="checks" class="card p-6 lg:col-span-2">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div><h2 class="text-lg font-extrabold">لیست جدیدترین چک‌ها</h2><p class="mt-1 text-[13px] font-semibold text-muted">وضعیت از پرونده‌ی فروش خوانده می‌شود</p></div>
+      <div class="flex flex-wrap gap-2">
+        {% for status, row in check_summary.items %}
+        <span class="pill border border-line {{ status|check_tone }}">{{ status }}: {{ row.count|fa }} / {{ row.amount|toman }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="overflow-auto rounded-2xl border border-line">
+      <table class="w-full text-center text-[13px]">
+        <thead class="bg-canvas text-muted"><tr>
+          <th class="px-4 py-3 font-extrabold">صاحب چک</th><th class="px-4 py-3 font-extrabold">شماره فاکتور</th><th class="px-4 py-3 font-extrabold">سررسید</th><th class="px-4 py-3 font-extrabold">مبلغ</th><th class="px-4 py-3 font-extrabold">وضعیت</th>
+        </tr></thead>
+        <tbody>
+          {% for chk in check_page %}
+          <tr class="border-t border-line">
+            <td class="px-4 py-3 font-bold">{% if 'sales' in crm_pages %}<a class="text-primary" href="{% url 'sale_detail' chk.invoice_id %}">{{ chk.customer }}</a>{% else %}{{ chk.customer }}{% endif %}</td>
+            <td class="px-4 py-3" dir="ltr">{{ chk.number }}</td>
+            <td class="px-4 py-3">{{ chk.due|jdate }}</td>
+            <td class="whitespace-nowrap px-4 py-3 font-extrabold text-primary">{{ chk.amount|money:money_unit }}</td>
+            <td class="px-4 py-3"><span class="pill {{ chk.status|check_tone }}">{{ chk.status }}</span></td>
+          </tr>
+          {% empty %}<tr><td colspan="5" class="px-4 py-8 text-center text-muted">چکی در این بازه نیست.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if check_page.paginator.num_pages > 1 %}
+    <nav class="mt-4 flex flex-wrap items-center justify-center gap-2" aria-label="صفحه‌های چک‌ها">
+      {% if check_page.has_previous %}
+      <a class="btn btn-outline !min-h-9 !px-3" href="?tab={{ tab }}{% if person %}&person={{ person|urlencode }}{% endif %}&cpage={{ check_page.previous_page_number }}#checks">قبلی</a>
+      {% endif %}
+      {% for number in check_page.paginator.page_range %}
+      <a class="grid h-9 min-w-9 place-items-center rounded-lg px-2 text-sm font-extrabold {% if number == check_page.number %}bg-primary text-white{% else %}border border-line bg-white text-muted hover:text-primary{% endif %}" href="?tab={{ tab }}{% if person %}&person={{ person|urlencode }}{% endif %}&cpage={{ number }}#checks">{{ number|fa }}</a>
+      {% endfor %}
+      {% if check_page.has_next %}
+      <a class="btn btn-outline !min-h-9 !px-3" href="?tab={{ tab }}{% if person %}&person={{ person|urlencode }}{% endif %}&cpage={{ check_page.next_page_number }}#checks">بعدی</a>
+      {% endif %}
+    </nav>
+    {% endif %}
+  </article>
+  {% if 'sales' in crm_pages %}
+  {% include "panel/partials/chart.html" with chart_id="invoiceChart" title="وصول و مانده فاکتورها" subtitle="هر میله یک فاکتور است؛ پایین وصول‌شده و بالا باقی‌مانده" hint="روی هر میله بزنید تا همان فاکتور در فروش‌ها باز شود." box="h-[340px]" span="lg:col-span-2" %}
+  {% else %}
+  {% include "panel/partials/chart.html" with chart_id="invoiceChart" title="وصول و مانده فاکتورها" subtitle="هر میله یک فاکتور است؛ پایین وصول‌شده و بالا باقی‌مانده" box="h-[340px]" span="lg:col-span-2" %}
+  {% endif %}
+  {% include "panel/partials/chart.html" with chart_id="financeChart" title="نسبت وصول به مطالبات" subtitle="سهم پول وصول‌شده از کل فروش دوره" box="h-[300px]" layout="share" click_customers=True %}
+  {% include "panel/partials/chart.html" with chart_id="methodChart" title="تفکیک روش‌های واریزی" subtitle="سهم هر روش پرداخت" box="h-[300px]" layout="share" click_customers=True %}
+  {% include "panel/partials/chart.html" with chart_id="checkChart" title="سررسید چک‌ها" subtitle="در هر تاریخ، نام و مبلغ چکی که آن روز سررسید می‌شود" layout="calendar" span="lg:col-span-2" %}
+</section>
+{% endif %}
+
+{% if tab == 'team' %}
+<div class="mt-6 rounded-card border border-line bg-white p-4">
+  <strong class="block text-lg">عملکرد تیم فروش</strong>
+  <small class="text-muted">{{ team_kpis.people|fa }} کارشناس در این نما</small>
+</div>
+<section class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+  {% for label, value in team_kpis.items %}
+  <article class="card p-4"><div class="text-xs font-bold text-muted">{% if label == 'sales' %}فروش{% elif label == 'profit' %}سود{% elif label == 'deals' %}معامله{% elif label == 'people' %}کارشناس{% else %}کارمزد{% endif %}</div><div class="mt-2 text-xl font-black" dir="ltr">{% if label == 'people' or label == 'deals' %}{{ value|fa }}{% else %}{{ value|toman }}{% endif %}</div></article>
+  {% endfor %}
+</section>
+<section class="mt-5">
+  {% include "panel/partials/chart.html" with chart_id="teamChart" title="عملکرد کارشناسان" subtitle="فروش، سود و کارمزد با واحد انتخاب‌شده. تعداد معامله روی محور بالا." box="h-[480px]" %}
+</section>
+<section class="mt-5 grid grid-cols-1 gap-5">
+  <article class="card p-6">
+    <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-extrabold">خلاصه تیم‌ها</h2>
+        <p class="mt-1 text-[13px] font-semibold text-muted">هر تیم با منتور خودش جمع شده است</p>
+      </div>
+      <span class="pill border border-line bg-slate-100">{{ team_groups|length|fa }} تیم</span>
+    </div>
+    <div class="overflow-auto rounded-2xl border border-line">
+      <table class="w-full border-collapse text-center text-[13px]">
+        <thead class="bg-canvas text-muted"><tr>
+          <th class="px-4 py-3 font-extrabold">رتبه</th>
+          <th class="px-4 py-3 font-extrabold">تیم</th>
+          <th class="px-4 py-3 font-extrabold">کارشناس</th>
+          <th class="px-4 py-3 font-extrabold">فروش</th>
+          <th class="px-4 py-3 font-extrabold">سود</th>
+          <th class="px-4 py-3 font-extrabold">حاشیه سود</th>
+          <th class="px-4 py-3 font-extrabold">معامله</th>
+          <th class="px-4 py-3 font-extrabold">کارمزد</th>
+          <th class="px-4 py-3 font-extrabold">سهم فروش</th>
+        </tr></thead>
+        <tbody>
+          {% for group in team_groups %}
+          <tr class="border-t border-line hover:bg-canvas">
+            <td class="px-4 py-3 font-bold">{{ forloop.counter|fa }}</td>
+            <td class="px-4 py-3 font-extrabold">{{ group.name }}</td>
+            <td class="px-4 py-3">{{ group.people|fa }}</td>
+            <td class="whitespace-nowrap px-4 py-3 font-extrabold text-primary">{{ group.sales|money:money_unit }}</td>
+            <td class="whitespace-nowrap px-4 py-3">{{ group.profit|money:money_unit }}</td>
+            <td class="px-4 py-3">{{ group.margin|fa }}٪</td>
+            <td class="px-4 py-3">{{ group.deals|fa }}</td>
+            <td class="whitespace-nowrap px-4 py-3">{{ group.commission|money:money_unit }}</td>
+            <td class="px-4 py-3">{{ group.share|fa }}٪</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="9" class="px-4 py-8 text-center text-muted">تیمی در این بازه نیست.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+  <article class="card p-6">
+    <div class="mb-4">
+      <h2 class="text-lg font-extrabold">عملکرد کارشناسان تیم‌ها</h2>
+      <p class="mt-1 text-[13px] font-semibold text-muted">فروش، سود و تعداد معامله هر کارشناس. نام کارشناس، مسیر رشد او را باز می‌کند</p>
+    </div>
+    <div class="max-h-[460px] overflow-auto rounded-2xl border border-line">
+      <table class="w-full border-collapse text-center text-[13px]">
+        <thead class="sticky top-0 bg-canvas text-muted"><tr>
+          <th class="px-4 py-3 font-extrabold">رتبه</th>
+          <th class="px-4 py-3 font-extrabold">تیم</th>
+          <th class="px-4 py-3 font-extrabold">کارشناس</th>
+          <th class="px-4 py-3 font-extrabold">فروش</th>
+          <th class="px-4 py-3 font-extrabold">سود</th>
+          <th class="px-4 py-3 font-extrabold">حاشیه سود</th>
+          <th class="px-4 py-3 font-extrabold">معامله</th>
+          <th class="px-4 py-3 font-extrabold">کارمزد</th>
+        </tr></thead>
+        <tbody>
+          {% for row in team_rows %}
+          <tr class="border-t border-line hover:bg-canvas">
+            <td class="px-4 py-3 font-bold">{{ forloop.counter|fa }}</td>
+            <td class="px-4 py-3">{{ row.team_name }}</td>
+            <td class="px-4 py-3 font-extrabold">{% if 'specialist' in crm_tabs %}<a class="text-primary" href="?tab=specialist&range={{ range_key }}&person={{ row.id }}&month={{ month }}">{{ row.name }}</a>{% else %}{{ row.name }}{% endif %}</td>
+            <td class="whitespace-nowrap px-4 py-3 font-extrabold text-primary">{{ row.sales|money:money_unit }}</td>
+            <td class="whitespace-nowrap px-4 py-3">{{ row.profit|money:money_unit }}</td>
+            <td class="px-4 py-3">{{ row.margin|fa }}٪</td>
+            <td class="px-4 py-3">{{ row.deals|fa }}</td>
+            <td class="whitespace-nowrap px-4 py-3">{{ row.commission|money:money_unit }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" class="px-4 py-8 text-center text-muted">کارشناسی در این بازه نیست.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+{% endif %}
+
+{% if tab == 'specialist' %}
+<form class="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-white p-4" method="get">
+  <input type="hidden" name="tab" value="{{ tab }}"><input type="hidden" name="range" value="{{ range_key }}"><input type="hidden" name="tmonth" value="{{ team_month }}">
+  <div class="flex items-center gap-3">
+    {% if person and crm_scope != 'self' %}<a class="btn btn-outline" href="?tab={{ tab }}&range={{ range_key }}&tmonth={{ team_month }}">بازگشت به فهرست</a>{% endif %}
+    <div class="grid h-12 w-12 place-items-center rounded-2xl bg-primary-soft text-lg font-black text-primary">{{ selected_name|default:"؟"|truncatechars:1 }}</div>
+    <div>
+      <strong class="block">{{ selected_name|default:"مسیر رشد کارشناسان" }}</strong>
+      <small class="text-muted">مسیر رشد کارشناسان فروش کشت‌یار</small>
+    </div>
+  </div>
+  {% if crm_scope != 'self' %}
+  <select name="person" class="field !w-auto" onchange="this.form.submit()">
+    <option value="">مقایسه‌ی تیم</option>
+    {% for member in people %}<option value="{{ member.pk }}" {% if person == member.pk|stringformat:"s" %}selected{% endif %}>{{ member.report_name }}</option>{% endfor %}
+  </select>
+  {% endif %}
+</form>
+
+{% if not person and crm_scope != 'self' %}
+<section class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+  {% for row in team_rows %}
+  <a href="?tab={{ tab }}&range={{ range_key }}&person={{ row.id }}&month={{ month }}&tmonth={{ team_month }}" class="card block p-5 transition hover:-translate-y-1 hover:shadow-lift" style="border-top: 4px solid {{ row.level_color }}">
+    <div class="flex items-center justify-between"><strong>{{ row.name }}</strong><span class="pill" style="background: {{ row.level_color }}22; color: {{ row.level_color }}">سطح {{ row.level_n|fa }} · {{ row.level_name }}</span></div>
+    <div class="mt-4 grid grid-cols-2 gap-2 text-sm">
+      <div><span class="block text-xs text-muted">سود ناخالص</span><b dir="ltr">{{ row.profit|toman }}</b></div>
+      <div><span class="block text-xs text-muted">کارمزد</span><b dir="ltr">{{ row.commission|toman }}</b></div>
+      <div><span class="block text-xs text-muted">پاداش</span><b dir="ltr">{{ row.bonus|toman }}</b></div>
+      <div><span class="block text-xs text-muted">مجموع دریافتی</span><b dir="ltr">{{ row.total_pay|toman }}</b></div>
+    </div>
+  </a>
+  {% empty %}<p class="text-muted">کارشناسی در این بازه نیست.</p>{% endfor %}
+</section>
+<article class="card mt-5 p-4 sm:p-6">
+  <h2 class="mb-4 text-lg font-extrabold">نمای جدولی</h2>
+  <div class="overflow-x-auto rounded-2xl border border-line">
+    <table class="w-full table-fixed border-collapse text-right text-[12px] leading-5 sm:text-[13px]">
+      <thead class="bg-canvas text-muted">
+        <tr>
+          <th class="px-3 py-3 font-extrabold">کارشناس</th>
+          <th class="px-3 py-3 font-extrabold">سطح</th>
+          <th class="px-3 py-3 font-extrabold">سود</th>
+          <th class="px-3 py-3 font-extrabold">کارمزد</th>
+          <th class="px-3 py-3 font-extrabold">پاداش</th>
+          <th class="px-3 py-3 font-extrabold">مجموع</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in team_rows %}
+        <tr class="border-t border-line hover:bg-canvas">
+          <td class="px-3 py-3 font-extrabold">{% if 'specialist' in crm_tabs %}<a class="text-primary" href="?tab=specialist&range={{ range_key }}&person={{ row.id }}&month={{ month }}&tmonth={{ team_month }}">{{ row.name }}</a>{% else %}{{ row.name }}{% endif %}</td>
+          <td class="px-3 py-3"><span class="pill whitespace-nowrap" style="background: {{ row.level_color }}22; color: {{ row.level_color }}">{{ row.level_name }}</span></td>
+          <td class="px-3 py-3 font-extrabold tabular-nums">{{ row.profit|money:money_unit }}</td>
+          <td class="px-3 py-3 tabular-nums">{{ row.commission|money:money_unit }}</td>
+          <td class="px-3 py-3 tabular-nums">{{ row.bonus|money:money_unit }}</td>
+          <td class="px-3 py-3 font-extrabold text-primary tabular-nums">{{ row.total_pay|money:money_unit }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="px-4 py-8 text-center font-bold text-muted">کارشناسی در این بازه نیست.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</article>
+{% elif detail %}
+<section class="mt-5 grid gap-5 rounded-card border border-line bg-white p-6 lg:grid-cols-[1fr_220px]" style="border-right: 6px solid {{ detail.level.color|default:'#94a3b8' }}">
+  <div>
+    <span class="text-xs font-extrabold text-muted">سطح فعلی</span>
+    <h2 class="mt-1 text-3xl font-black" style="color: {{ detail.level.color|default:'#0f172a' }}">{{ detail.level.name|default:"هنوز وارد مسیر رشد نشده" }}</h2>
+    <p class="mt-1 font-bold text-muted">{{ detail.level.tagline }}</p>
+    <p class="mt-3 text-sm leading-7 text-slate-600">{{ detail.level.intro }}</p>
+    <div class="mt-5">
+      <div class="mb-1 flex justify-between text-sm font-bold"><span>{% if detail.next %}پیشرفت تا {{ detail.next.name }}{% else %}بالاترین سطح مسیر رشد{% endif %}</span><b>{{ detail.pct|fa }}٪</b></div>
+      <div class="h-3 overflow-hidden rounded-full bg-slate-100"><span class="block h-full rounded-full bg-primary" style="width: {{ detail.pct }}%"></span></div>
+      <small class="mt-1 block text-muted">سود ملاک سطح: {{ detail.progress_profit|toman }} تومان · هدف: {{ detail.target|toman }}</small>
+    </div>
+  </div>
+  <div class="grid content-center justify-items-center gap-3">
+    <div class="grid h-28 w-28 place-items-center rounded-full text-center text-white" style="background: {{ detail.level.color|default:'#64748b' }}"><div><b class="block text-3xl">{{ detail.level.n|default:"—"|fa }}</b><small>سطح</small></div></div>
+    <div class="text-center"><small class="text-muted">سود ناخالص این دوره</small><b class="mt-1 block text-2xl" dir="ltr">{{ detail.profit|toman }}</b><span class="text-xs text-muted">تومان</span></div>
+  </div>
+</section>
+<section class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+  <article class="card p-4"><div class="text-xs font-bold text-muted">حقوق پایه</div><b class="mt-2 block" dir="ltr">{{ detail.pay.base|toman }}</b></article>
+  <article class="card p-4"><div class="text-xs font-bold text-muted">کارمزد فروش</div><b class="mt-2 block" dir="ltr">{{ detail.pay.commission|toman }}</b></article>
+  <article class="card p-4"><div class="text-xs font-bold text-muted">پاداش سطح</div><b class="mt-2 block" dir="ltr">{{ detail.pay.bonus|toman }}</b></article>
+  <article class="card p-4"><div class="text-xs font-bold text-muted">مجموع دریافتی</div><b class="mt-2 block text-primary" dir="ltr">{{ detail.pay.total|toman }}</b></article>
+</section>
+<article class="card mt-5 p-6">
+  <h2 class="text-lg font-extrabold">نردبان مسیر رشد</h2>
+  <p class="mb-4 mt-1 text-[13px] font-semibold text-muted">سطح هر فرد بر اساس سود ناخالص همان ماه تعیین می‌شود</p>
+  <div class="grid gap-3 md:grid-cols-5">
+    {% for level in levels %}
+    <div class="rounded-2xl border p-3 {% if detail.level.n == level.n %}ring-2 ring-offset-2{% endif %}" style="border-color: {{ level.color }}; background: {{ level.soft }}">
+      <div class="text-xs font-black" style="color: {{ level.color }}">سطح {{ level.n|fa }}</div>
+      <div class="mt-1 font-extrabold">{{ level.name }}</div>
+      <div class="mt-2 text-[11px] font-semibold text-muted">از {{ level.min|toman }}{% if level.max %} تا {{ level.max|toman }}{% endif %}</div>
+      <div class="mt-1 text-[11px] font-bold">کارمزد {{ level.rate|rate_pct }}٪</div>
+    </div>
+    {% endfor %}
+  </div>
+</article>
+<section class="mt-5">
+  {% include "panel/partials/chart.html" with chart_id="trendChart" title="روند سود ماهانه" subtitle="سود ناخالص هر ماه در بازه نمودار" box="h-[300px]" %}
+</section>
+{% if detail.commission_rows %}
+<article class="card mt-5 p-4 sm:p-6">
+  <h2 class="mb-4 text-lg font-extrabold">پورسانت فاکتورها</h2>
+  <div class="overflow-x-auto rounded-2xl border border-line">
+    <table class="w-full table-fixed border-collapse text-center text-[12.5px]">
+      <thead class="bg-canvas text-muted"><tr>
+        <th class="w-[22%] px-2 py-3 font-extrabold">فاکتور</th>
+        <th class="w-[20%] px-2 py-3 font-extrabold">سود</th>
+        <th class="w-[12%] px-2 py-3 font-extrabold">درصد</th>
+        <th class="w-[22%] px-2 py-3 font-extrabold">مبلغ</th>
+        <th class="w-[24%] px-2 py-3 font-extrabold">وضعیت</th>
+      </tr></thead>
+      <tbody>
+        {% for row in detail.commission_rows %}
+        <tr class="border-t border-line">
+          <td class="whitespace-nowrap px-2 py-3" dir="ltr">{{ row.number }}</td>
+          <td class="whitespace-nowrap px-2 py-3">{{ row.profit|money:money_unit }}</td>
+          <td class="whitespace-nowrap px-2 py-3">{{ row.rate|fa }}٪</td>
+          <td class="whitespace-nowrap px-2 py-3 font-extrabold text-primary">{{ row.amount|money:money_unit }}</td>
+          <td class="px-2 py-3">{% if row.paid %}<span class="pill bg-emerald-50 text-emerald-700">پرداخت‌شده</span>{% else %}<span class="pill bg-amber-50 text-amber-700">پرداخت‌نشده</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="mt-3 grid grid-cols-2 gap-2 text-center text-[13px] font-bold">
+    <div class="rounded-xl bg-emerald-50 px-3 py-2 text-emerald-700">پرداخت‌شده<div class="mt-1">{{ detail.paid|money:money_unit }}</div></div>
+    <div class="rounded-xl bg-amber-50 px-3 py-2 text-amber-700">پرداخت‌نشده<div class="mt-1">{{ detail.unpaid|money:money_unit }}</div></div>
+  </div>
+</article>
+{% endif %}
+<article class="card mt-5 p-6">
+  <h2 class="text-lg font-extrabold">بندهای عمومی</h2>
+  <ol class="mt-3 list-decimal space-y-2 pr-5 text-sm leading-7 text-slate-700">
+    {% for rule in rules %}<li>{{ rule }}</li>{% endfor %}
+  </ol>
+</article>
+{% else %}
+<p class="mt-6 rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800">برای این نام در بازه‌ی انتخاب‌شده فروشی ثبت نشده است.</p>
+{% endif %}
+{% endif %}
+
+<div id="chart-customers-page" class="chart-customers-page" hidden>
+  <div class="chart-customers-sheet">
+    <button type="button" class="chart-customers-back" data-customers-back>
+      <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2.4" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      بازگشت به نمودارها
+    </button>
+    <header class="chart-customers-head">
+      <p data-customers-source></p>
+      <h2 data-customers-title></h2>
+      <span data-customers-count></span>
+    </header>
+    <div class="chart-customers-table">
+      <table>
+        <thead>
+          <tr>
+            <th>رتبه</th>
+            <th>نام مشتری</th>
+            <th>مبلغ این بخش</th>
+          </tr>
+        </thead>
+        <tbody data-customers-list></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{{ dash_payload|json_script:"dash-data" }}
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'vendor/chart.umd.min.js' %}"></script>
+<script src="{% static 'panel/dashboard.js' %}?v=59"></script>
+{% endblock %}

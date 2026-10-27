@@ -1,0 +1,67 @@
+{% extends "panel/base.html" %}
+{% load panel_tags %}
+{% block title %}جزئیات اعلام فروش{% endblock %}
+{% block content %}
+<header class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-white px-6 py-4">
+  <div>
+    <h1 class="text-xl font-extrabold">{{ req.customer_name }}</h1>
+    <p class="text-sm text-muted">{{ req.get_status_display }}{% if req.incomplete %} · ناقص{% endif %} · {{ req.seller.report_name }} · {{ req.sold_on|jdate }}</p>
+  </div>
+  <div class="flex gap-2">
+    {% if req.status == 'pending' %}<a class="btn btn-outline" href="{% url 'request_edit' req.pk %}">{% if req.incomplete %}تکمیل فرم{% else %}ویرایش{% endif %}</a>{% endif %}
+    <a class="btn btn-outline" href="{% url 'requests' %}">فهرست</a>
+  </div>
+</header>
+{% if req.incomplete %}
+<div class="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
+  <div class="mb-1">نواقص این اعلام فروش:</div>
+  {% if gaps %}
+  <ul class="list-disc pr-5">{% for err in gaps %}<li>{{ err }}</li>{% endfor %}</ul>
+  {% else %}
+  <p>فیلدهای ضروری پر شده‌اند. با ذخیرهٔ دوبارهٔ فرم، برچسب ناقص برداشته می‌شود.</p>
+  {% endif %}
+</div>
+{% endif %}
+<section class="grid gap-4 md:grid-cols-4">
+  <article class="card p-4"><div class="text-xs text-muted">فروش</div><b dir="ltr">{{ req.sale_amount|toman }}</b></article>
+  <article class="card p-4"><div class="text-xs text-muted">بهای تمام‌شده</div><b dir="ltr">{{ req.cost_amount|toman }}</b></article>
+  <article class="card p-4"><div class="text-xs text-muted">اقلام</div><b>{{ req.line_list|length|fa }}</b></article>
+  <article class="card p-4"><div class="text-xs text-muted">تسویه</div><b>{{ req.settlement }} · {{ req.customer_type }}</b></article>
+</section>
+<section class="card mt-4 p-5">
+  <h3 class="mb-2 font-extrabold">مشتری</h3>
+  <p class="text-sm leading-7">{{ req.phone }} · {{ req.city }}<br>{{ req.address }}</p>
+  {% if req.note %}<p class="mt-2 text-sm text-muted">{{ req.note }}</p>{% endif %}
+</section>
+<section class="card mt-4 overflow-auto p-5">
+  <h3 class="mb-2 font-extrabold">اقلام</h3>
+  <table class="w-full text-sm"><thead class="text-muted"><tr><th class="py-2 text-right">کالا</th><th class="text-right">تعداد</th><th class="text-right">قیمت فروش هر واحد</th><th class="text-right">قیمت خرید هر واحد</th></tr></thead>
+  <tbody>{% for line in req.line_list %}<tr class="border-t border-line"><td class="py-2">{{ line.product_name }}</td><td>{{ line.qty }}</td><td class="whitespace-nowrap" dir="ltr">{{ line.unit_price|money:money_unit }}</td><td class="whitespace-nowrap" dir="ltr">{{ line.unit_cost|money:money_unit }}</td></tr>{% endfor %}</tbody></table>
+</section>
+<section class="mt-4 grid gap-4 md:grid-cols-2">
+  <article class="card p-5"><h3 class="mb-2 font-extrabold">پرداخت‌ها</h3>{% for pay in req.payment_list %}<p class="text-sm">{{ pay.method }} · {{ pay.amount|toman }} · {{ pay.paid_on|jdate }}</p>{% empty %}<p class="text-sm text-muted">پرداختی ثبت نشده.</p>{% endfor %}</article>
+  <article class="card p-5"><h3 class="mb-2 font-extrabold">چک‌ها</h3>{% for chk in req.check_list %}<p class="text-sm">{{ chk.number|default:"—" }} · {{ chk.bank }} · {{ chk.amount|toman }} · {{ chk.due_on|jdate }}</p>{% empty %}<p class="text-sm text-muted">چکی نیست.</p>{% endfor %}</article>
+</section>
+<section class="card mt-4 p-5">
+  <h3 class="mb-2 font-extrabold">مدارک آپلودشده</h3>
+  <ul class="space-y-2 text-sm">
+    {% for doc in req.files.all %}
+    <li><a class="font-bold text-primary" href="{{ doc.file.url }}" target="_blank" rel="noopener">{{ doc.name|default:"مدرک" }}</a> <span class="text-muted">{{ doc.uploaded_at|jdate }}</span></li>
+    {% empty %}<li class="text-muted">مدرکی پیوست نشده.</li>{% endfor %}
+  </ul>
+</section>
+{% if req.warnings %}<div class="mt-4 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">{% for w in req.warnings %}<div>{{ w }}</div>{% endfor %}</div>{% endif %}
+{% if can_review and req.status == 'pending' %}
+<form method="post" action="{% url 'request_review' req.pk %}" class="card mt-4 p-5">{% csrf_token %}
+  <h3 class="font-extrabold">بررسی مدیر</h3>
+  {% if req.incomplete %}<p class="mt-2 text-sm font-bold text-amber-800">این درخواست ناقص است و تا تکمیل شدن قابل تایید نیست.</p>{% endif %}
+  <textarea name="review_note" class="field mt-3" rows="2" placeholder="یادداشت بررسی"></textarea>
+  <div class="mt-3 flex gap-2">
+    <button class="btn btn-green" name="action" value="approve" type="submit" {% if req.incomplete %}disabled{% endif %}>تایید و ثبت فاکتور</button>
+    <button class="btn btn-danger" name="action" value="reject" type="submit">رد درخواست</button>
+  </div>
+</form>
+{% elif req.review_note %}
+<p class="card mt-4 p-4 text-sm">یادداشت بررسی: {{ req.review_note }} {% if req.invoice %}— فاکتور {{ req.invoice.number }}{% endif %}</p>
+{% endif %}
+{% endblock %}
