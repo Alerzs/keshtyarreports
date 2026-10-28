@@ -29,6 +29,7 @@ def dashboard(request):
     team_month = 'all'
     data = build_dashboard(request.user, range_key, person, month, team_month)
     charts = data.pop('charts')
+    kpi_tables = data.pop('kpi_tables')
     data['check_page'] = Paginator(data.pop('checks'), 10).get_page(request.GET.get('cpage') or 1)
     return render(request, 'panel/dashboard.html', {
         'tab': tab,
@@ -44,6 +45,7 @@ def dashboard(request):
             'byRange': {'all': charts},
             'months': list(reversed(periods)),
             'kpis': data['kpis'],
+            'kpiTables': kpi_tables,
             'chartsUrl': reverse('dashboard_charts'),
             'customerBase': reverse('customers'),
             'salesBase': reverse('sales') if can_page(request.user, 'sales') else '',
@@ -64,4 +66,8 @@ def dashboard_charts(request):
         start, end = end, start
     person = request.GET.get('person') or ''
     built = build_dashboard(request.user, f'{start}..{end}', person, 'all', 'all')
-    return JsonResponse({'charts': built['charts'], 'kpis': built['kpis']})
+    return JsonResponse({
+        'charts': built['charts'],
+        'kpis': built['kpis'],
+        'kpiTables': built['kpi_tables'],
+    })

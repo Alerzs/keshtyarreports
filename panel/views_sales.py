@@ -133,6 +133,8 @@ def sale_detail(request, pk):
             'qty': _qty_text(line.qty),
             'unit_price': int(line.unit_price or 0),
             'amount': int(line.qty * (line.unit_price or 0)),
+            'unit_cost': int(line.unit_cost or 0),
+            'cost': int(line.qty * (line.unit_cost or 0)),
         }
         for line in invoice.lines.all()
     ]

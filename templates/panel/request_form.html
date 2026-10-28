@@ -105,7 +105,7 @@
           {% for line in entry.line_list %}
           <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
             <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">قلم فاکتور</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
-            <label class="label">کالا</label>
+            <label class="label">کالا <span class="text-red-500">*</span></label>
             <select name="product" class="field">
               <option value="">انتخاب کالا</option>
               {% for name in products %}
@@ -113,16 +113,16 @@
               {% endfor %}
             </select>
             <div class="mt-2 grid grid-cols-2 gap-2">
-              <div><label class="label">تعداد</label><input name="qty" class="field" dir="ltr" inputmode="decimal" autocomplete="off" placeholder="تعداد" value="{{ line.qty }}"></div>
-              <div><label class="label">قیمت فروش هر واحد</label><input name="unit_price" class="field" dir="ltr" placeholder="قیمت فروش هر واحد" value="{{ line.unit_price }}"></div>
-              <div><label class="label">قیمت خرید هر واحد</label><input name="unit_cost" class="field" dir="ltr" placeholder="قیمت خرید هر واحد" value="{{ line.unit_cost }}"></div>
+              <div><label class="label">تعداد <span class="text-red-500">*</span></label><input name="qty" class="field" dir="ltr" inputmode="decimal" autocomplete="off" placeholder="تعداد" value="{{ line.qty }}"></div>
+              <div><label class="label">قیمت فروش هر واحد <span class="text-red-500">*</span></label><input name="unit_price" class="field" dir="ltr" placeholder="قیمت فروش هر واحد" value="{{ line.unit_price }}"></div>
+              <div><label class="label">قیمت خرید هر واحد <span class="text-red-500">*</span></label><input name="unit_cost" class="field" dir="ltr" placeholder="قیمت خرید هر واحد" value="{{ line.unit_cost }}"></div>
             </div>
           </div>
           {% endfor %}
         {% else %}
           <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
             <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">قلم فاکتور</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
-            <label class="label">کالا</label>
+            <label class="label">کالا <span class="text-red-500">*</span></label>
             <select name="product" class="field">
               <option value="">انتخاب کالا</option>
               {% for name in products %}
@@ -130,9 +130,9 @@
               {% endfor %}
             </select>
             <div class="mt-2 grid grid-cols-2 gap-2">
-              <div><label class="label">تعداد</label><input name="qty" class="field" dir="ltr" inputmode="decimal" autocomplete="off" placeholder="تعداد" value="1"></div>
-              <div><label class="label">قیمت فروش هر واحد</label><input name="unit_price" class="field" dir="ltr" placeholder="قیمت فروش هر واحد"></div>
-              <div><label class="label">قیمت خرید هر واحد</label><input name="unit_cost" class="field" dir="ltr" placeholder="قیمت خرید هر واحد"></div>
+              <div><label class="label">تعداد <span class="text-red-500">*</span></label><input name="qty" class="field" dir="ltr" inputmode="decimal" autocomplete="off" placeholder="تعداد" value="1"></div>
+              <div><label class="label">قیمت فروش هر واحد <span class="text-red-500">*</span></label><input name="unit_price" class="field" dir="ltr" placeholder="قیمت فروش هر واحد"></div>
+              <div><label class="label">قیمت خرید هر واحد <span class="text-red-500">*</span></label><input name="unit_cost" class="field" dir="ltr" placeholder="قیمت خرید هر واحد"></div>
             </div>
           </div>
         {% endif %}
@@ -150,7 +150,7 @@
             <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
               <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">پرداخت</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
               <div class="grid grid-cols-2 gap-2">
-                <div><label class="label">مبلغ</label><input name="pay_amount" class="field" dir="ltr" placeholder="مبلغ" value="{{ pay.amount }}"></div>
+                <div><label class="label">مبلغ <span class="text-red-500">*</span></label><input name="pay_amount" class="field" dir="ltr" placeholder="مبلغ" value="{{ pay.amount }}"></div>
                 <div><label class="label">تاریخ</label><input name="pay_date" class="field cursor-pointer" data-jdate readonly placeholder="۱۴۰۵/۰۶/۱۲" value="{{ pay.paid_on|input_date }}"></div>
                 <div class="col-span-2"><label class="label">روش</label><select name="pay_method" class="field">{% for m in pay_methods %}<option {% if pay.method == m %}selected{% endif %}>{{ m }}</option>{% endfor %}</select></div>
                 <div class="col-span-2"><label class="label">یادداشت</label><input name="pay_note" class="field" placeholder="یادداشت" value="{{ pay.note }}"></div>
@@ -160,7 +160,7 @@
             <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
               <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">پرداخت</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
               <div class="grid grid-cols-2 gap-2">
-                <div><label class="label">مبلغ</label><input name="pay_amount" class="field" dir="ltr" placeholder="مبلغ"></div>
+                <div><label class="label">مبلغ <span class="text-red-500">*</span></label><input name="pay_amount" class="field" dir="ltr" placeholder="مبلغ"></div>
                 <div><label class="label">تاریخ</label><input name="pay_date" class="field cursor-pointer" data-jdate readonly placeholder="۱۴۰۵/۰۶/۱۲"></div>
                 <div class="col-span-2"><label class="label">روش</label><select name="pay_method" class="field">{% for m in pay_methods %}<option>{{ m }}</option>{% endfor %}</select></div>
                 <div class="col-span-2"><label class="label">یادداشت</label><input name="pay_note" class="field" placeholder="یادداشت"></div>
@@ -171,7 +171,7 @@
             <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
               <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">پرداخت</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
               <div class="grid grid-cols-2 gap-2">
-                <div><label class="label">مبلغ</label><input name="pay_amount" class="field" dir="ltr" placeholder="مبلغ"></div>
+                <div><label class="label">مبلغ <span class="text-red-500">*</span></label><input name="pay_amount" class="field" dir="ltr" placeholder="مبلغ"></div>
                 <div><label class="label">تاریخ</label><input name="pay_date" class="field cursor-pointer" data-jdate readonly placeholder="۱۴۰۵/۰۶/۱۲"></div>
                 <div class="col-span-2"><label class="label">روش</label><select name="pay_method" class="field">{% for m in pay_methods %}<option>{{ m }}</option>{% endfor %}</select></div>
                 <div class="col-span-2"><label class="label">یادداشت</label><input name="pay_note" class="field" placeholder="یادداشت"></div>
@@ -423,7 +423,7 @@
 <script>
 const HINTS = [
   '{% if lock_seller %}تاریخ فروش و مشتری را انتخاب کنید. فروشنده همین حساب شماست و قابل تغییر نیست.{% else %}فروشنده، تاریخ فروش و مشتری را انتخاب کنید. مشتری تازه را با دکمه ثبت مشتری جدید وارد کنید.{% endif %}',
-  'اقلام فاکتور، پرداخت‌ها و در فروش قسطی، چک‌ها را ثبت کنید. مبالغ به تومان است.',
+  'کالا، تعداد، قیمت فروش و قیمت خرید هر قلم، و حداقل یک پرداختی اجباری است. در فروش قسطی چک هم لازم است.',
   'شماره تماس، شهر و آدرس ضروری است. بقیه اعتبارسنجی اختیاری است.',
   'خلاصه را ببینید، توضیحات را بنویسید و برای تایید بفرستید. می‌توانید بقیه را بعداً پر کنید.',
 ];
@@ -756,8 +756,51 @@ document.getElementById('saleForm').addEventListener('input', (event) => {
 document.getElementById('saleForm').addEventListener('focusout', (event) => {
   if (event.target && event.target.name === 'qty') paintQty(event.target, true);
 });
-document.getElementById('saleForm').addEventListener('submit', () => {
+function lineFieldEmpty(el) {
+  if (!el) return true;
+  if (el.name === 'product') return !el.value;
+  if (el.name === 'qty') {
+    const n = Number(sanitizeQty(el.value));
+    return !Number.isFinite(n) || n < 1;
+  }
+  return Number(moneyDigits(el.value) || '0') <= 0;
+}
+
+function markEmptyLineFields() {
+  const rows = [...document.querySelectorAll('#items [data-row]')];
+  rows.forEach((row) => {
+    const fields = ['product', 'qty', 'unit_price', 'unit_cost'].map((name) => row.querySelector('[name="' + name + '"]'));
+    const touched = fields.some((el) => el && el.name !== 'qty' && !lineFieldEmpty(el));
+    if (rows.length > 1 && !touched) return;
+    fields.forEach((el) => {
+      if (lineFieldEmpty(el)) el.classList.add('is-gap');
+    });
+  });
+}
+
+function markEmptyPayments() {
+  const amounts = [...document.querySelectorAll('#pays [name="pay_amount"]')];
+  const hasOne = amounts.some((el) => Number(moneyDigits(el.value) || '0') > 0);
+  if (hasOne) return;
+  if (amounts[0]) amounts[0].classList.add('is-gap');
+}
+
+document.getElementById('saleForm').addEventListener('submit', (event) => {
   document.querySelectorAll('#saleForm [name="qty"]').forEach((el) => paintQty(el, true));
+  const defer = document.querySelector('#saleForm [name="defer"]');
+  if (defer && defer.checked) return;
+  document.querySelectorAll('#items .is-gap, #pays .is-gap').forEach((el) => el.classList.remove('is-gap'));
+  markEmptyLineFields();
+  markEmptyPayments();
+  const lineGap = document.querySelector('#items .is-gap');
+  const payGap = document.querySelector('#pays .is-gap');
+  if (!lineGap && !payGap) return;
+  event.preventDefault();
+  showStep(2, true);
+  const hint = document.getElementById('stepHint');
+  if (lineGap && payGap) hint.textContent = 'کالا، تعداد، قیمت فروش، قیمت خرید و حداقل یک پرداختی اجباری است.';
+  else if (payGap) hint.textContent = 'حداقل یک پرداختی اجباری است.';
+  else hint.textContent = 'کالا، تعداد، قیمت فروش و قیمت خرید هر قلم اجباری است.';
 });
 const saleUploads = document.getElementById('saleUploads');
 if (saleUploads) {
@@ -962,7 +1005,6 @@ function markGaps(text) {
     [/تماس/, ['phone']],
     [/شهر/, ['city']],
     [/آدرس/, ['address']],
-    [/قلم|فاکتور/, ['product', 'qty', 'unit_price']],
     [/چک|سررسید/, ['chk_number', 'chk_amount', 'chk_date', 'chk_bank']],
   ];
   rules.forEach(([pattern, names]) => {
@@ -974,6 +1016,8 @@ function markGaps(text) {
       }
     });
   });
+  if (/قلم|فاکتور/.test(text)) markEmptyLineFields();
+  if (/پرداخت/.test(text)) markEmptyPayments();
 }
 
 const err = document.getElementById('formErrors');
@@ -983,7 +1027,7 @@ if (err) {
   markGaps(text);
   const step1Gap = /فروشنده|تاریخ فروش|تسویه|نوع مشتری|نام مشتری/.test(text);
   const contactGap = /تماس|شهر|آدرس/.test(text);
-  const invoiceGap = /قلم|فاکتور|چک/.test(text);
+  const invoiceGap = /قلم|فاکتور|چک|پرداخت/.test(text);
   if (!step1Gap && contactGap) start = 3;
   else if (!step1Gap && invoiceGap) start = 2;
 }

@@ -7,6 +7,7 @@
   .chart-share li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; column-gap: 10px; border-radius: 14px; background: #f8fafc; padding: 8px 10px; }
   .chart-share .swatch { width: 10px; height: 10px; border-radius: 999px; }
   .chart-share .name { font-size: 12.5px; font-weight: 800; color: #0f172a; }
+  .chart-share .sum { display: block; margin-top: 2px; font-size: 12px; font-weight: 900; color: #0f172a; }
   .chart-share .meta { margin-top: 2px; font-size: 11px; font-weight: 700; color: #64748b; }
   .chart-share .pct { font-size: 14px; font-weight: 900; color: #0e7490; }
   .chart-share .chart-piece { display: block; width: 100%; margin-top: 2px; padding: 0; border: 0; background: transparent; text-align: right; font: inherit; font-size: 11px; font-weight: 800; color: #0e7490; cursor: pointer; }
@@ -52,15 +53,38 @@
   .chart-customers-head p { font-size: 12.5px; font-weight: 800; color: #0e7490; }
   .chart-customers-head h2 { margin-top: 4px; font-size: 24px; font-weight: 900; color: #0f172a; }
   .chart-customers-head span { display: inline-flex; margin-top: 10px; border-radius: 999px; background: #fff; border: 1px solid #e2e8f0; padding: 4px 10px; font-size: 12px; font-weight: 800; color: #64748b; }
+  .kpi-detail-total { margin-top: 8px; font-size: 28px; font-weight: 900; line-height: 1; color: #0f172a; }
+  .kpi-detail-total[hidden] { display: none; }
   .chart-customers-table { margin-top: 18px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 20px; background: #fff; box-shadow: 0 10px 30px -5px rgba(0,0,0,0.05); }
   .chart-customers-table table { width: 100%; border-collapse: collapse; text-align: right; font-size: 13px; }
-  .chart-customers-table th { position: sticky; top: 0; background: #f8fafc; padding: 12px 16px; font-weight: 800; color: #64748b; }
+  .chart-customers-table th { position: sticky; top: 0; background: #f8fafc; padding: 12px 16px; font-weight: 800; color: #64748b; white-space: nowrap; }
   .chart-customers-table td { border-top: 1px solid #e2e8f0; padding: 12px 16px; }
+  @media (max-width: 720px) {
+    .chart-customers-table th, .chart-customers-table td { padding: 10px 8px; }
+    .kpi-detail-total { font-size: 22px; }
+  }
   .chart-customers-table tr:hover td { background: #f8fafc; }
   .chart-customers-table a { font-weight: 800; color: #0e7490; }
   .chart-customers-table a:hover { text-decoration: underline; }
   .chart-customers-table .amount { font-weight: 800; color: #0e7490; white-space: nowrap; }
   .chart-customers-empty { padding: 32px 16px; text-align: center; font-weight: 700; color: #64748b; }
+  [data-kpi-card] { cursor: pointer; }
+  [data-kpi-card]:focus-visible { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #0e7490; }
+  .kpi-card-more { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 4px; margin-top: 12px; font-size: 11px; font-weight: 800; color: #0e7490; }
+  .kpi-detail-search { display: flex; align-items: center; gap: 8px; max-width: 420px; margin-top: 16px; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; padding: 8px 12px; font-size: 13px; font-weight: 800; color: #64748b; box-shadow: 0 10px 30px -5px rgba(0,0,0,0.05); }
+  .kpi-detail-search input { min-width: 0; flex: 1; border: 0; background: transparent; font: inherit; font-weight: 700; color: #0f172a; outline: none; }
+  .chart-customers-table tfoot td { position: sticky; bottom: 0; border-top: 1px solid #e2e8f0; background: #f8fafc; font-weight: 900; }
+  .chart-customers-table .is-debt { font-weight: 800; color: #e11d48; white-space: nowrap; }
+  .chart-customers-table .is-profit { font-weight: 800; color: #059669; white-space: nowrap; }
+  .kpi-sort { display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; padding: 0; font: inherit; font-weight: 800; color: inherit; cursor: pointer; }
+  .kpi-sort:hover, .kpi-sort.is-active { color: #0e7490; }
+  .kpi-sort-mark { font-size: 11px; line-height: 1; }
+  .kpi-pages { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; }
+  .kpi-pages[hidden] { display: none; }
+  .kpi-page { display: grid; min-width: 36px; height: 36px; place-items: center; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 0 10px; font: inherit; font-size: 13px; font-weight: 800; color: #64748b; cursor: pointer; }
+  .kpi-page:hover:not(:disabled) { color: #0e7490; }
+  .kpi-page.is-current { border-color: transparent; background: #0e7490; color: #fff; }
+  .kpi-page:disabled { opacity: 0.4; cursor: default; }
 </style>
 {% endblock %}
 {% block content %}
@@ -77,10 +101,6 @@
       <h1 class="mt-2 text-2xl font-black md:text-[28px]">
         {% if crm_scope == 'self' %}مسیر رشد و عملکرد من{% elif crm_scope == 'team' %}عملکرد تیم من{% else %}داشبورد مدیریت فروش{% endif %}
       </h1>
-    </div>
-    <div class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur">
-      <div class="text-[11px] font-semibold text-white/70">فاکتور در بازه انتخاب‌شده</div>
-      <div class="mt-0.5 text-2xl font-black leading-none">{{ invoice_count|fa }}</div>
     </div>
   </div>
 </header>
@@ -108,7 +128,7 @@
 </div>
 <section class="mt-3 grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-5" data-kpis>
   {% for kpi in kpis %}
-  <article class="group relative min-h-[140px] min-w-0 overflow-hidden rounded-[20px] border border-line bg-white p-[22px] shadow-card transition duration-300 hover:-translate-y-1 hover:shadow-lift lg:p-4"
+  <article class="group relative min-h-[140px] min-w-0 overflow-hidden rounded-[20px] border border-line bg-white p-[22px] shadow-card transition duration-300 hover:-translate-y-1 hover:shadow-lift lg:p-4" data-kpi-card="{{ kpi.key }}" role="button" tabindex="0" aria-label="جدول {{ kpi.label }}"
     {% if kpi.tone == 'c1' %}border-b-[3px] border-b-[#0e7490]
     {% elif kpi.tone == 'c2' %}border-b-[3px] border-b-[#059669]
     {% elif kpi.tone == 'c3' %}border-b-[3px] border-b-[#e11d48]
@@ -147,11 +167,18 @@
         <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
         {% elif kpi.key == 'count' %}
         <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+        {% elif kpi.key == 'checks' %}
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><rect x="2" y="6" width="20" height="12" rx="2"></rect><path d="M6 10h6"></path><path d="M6 14h4"></path><path d="M16 12h2"></path></svg>
+        {% elif kpi.key == 'loyal' %}
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
         {% endif %}
       </span>
     </div>
     <div class="relative z-[1] mt-5 text-right text-[28px] font-black leading-none text-ink lg:text-[1.35rem] xl:text-[1.55rem]" dir="ltr" data-kpi="{{ kpi.key }}"{% if kpi.plain %} data-plain{% endif %}>{% if kpi.plain %}{{ kpi.value|fa }}{% else %}{{ kpi.value|toman }}{% endif %}</div>
     <div class="relative z-[1] mt-2 text-[11.5px] font-semibold text-muted">{{ kpi.note }}</div>
+    <div class="kpi-card-more">مشاهده جدول
+      <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2.4" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </div>
   </article>
   {% endfor %}
 </section>
@@ -199,18 +226,18 @@
 </section>
 <article class="card mt-5 p-6">
   <div class="mb-4">
-    <h2 class="text-lg font-extrabold">مشتریان ثابت و جدید</h2>
-    <p class="mt-1 text-[13px] font-semibold text-muted">سهم فروش و سود هر کارشناس از مشتری تکراری و مشتری تازه‌وارد</p>
+    <h2 class="text-lg font-extrabold">مشتریان وفادار و جدید</h2>
+    <p class="mt-1 text-[13px] font-semibold text-muted">سهم فروش و سود هر کارشناس از مشتری وفادار و مشتری تازه‌وارد</p>
   </div>
   <div class="overflow-auto rounded-2xl border border-line">
     <table class="w-full border-collapse text-center text-[13px]">
       <thead class="bg-canvas text-muted"><tr>
         <th class="px-4 py-3 font-extrabold">کارشناس</th>
-        <th class="px-4 py-3 font-extrabold">فروش ثابت</th>
+        <th class="px-4 py-3 font-extrabold">فروش وفادار</th>
         <th class="px-4 py-3 font-extrabold">فروش جدید</th>
-        <th class="px-4 py-3 font-extrabold">سود ثابت</th>
+        <th class="px-4 py-3 font-extrabold">سود وفادار</th>
         <th class="px-4 py-3 font-extrabold">سود جدید</th>
-        <th class="px-4 py-3 font-extrabold">معامله ثابت</th>
+        <th class="px-4 py-3 font-extrabold">معامله وفادار</th>
         <th class="px-4 py-3 font-extrabold">معامله جدید</th>
       </tr></thead>
       <tbody>
@@ -528,6 +555,33 @@
 {% endif %}
 {% endif %}
 
+<div id="kpi-detail-page" class="chart-customers-page" hidden>
+  <div class="chart-customers-sheet">
+    <button type="button" class="chart-customers-back" data-kpi-back>
+      <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2.4" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      بازگشت به داشبورد
+    </button>
+    <header class="chart-customers-head">
+      <p data-kpi-source></p>
+      <h2 data-kpi-title></h2>
+      <div class="kpi-detail-total" data-kpi-total hidden></div>
+      <span data-kpi-count></span>
+    </header>
+    <label class="kpi-detail-search">
+      <span>جستجو</span>
+      <input type="search" data-kpi-search placeholder="نام مشتری، شماره فاکتور یا کارشناس" autocomplete="off" aria-label="جستجو در جدول شاخص">
+    </label>
+    <div class="chart-customers-table">
+      <table>
+        <thead><tr data-kpi-head></tr></thead>
+        <tbody data-kpi-body></tbody>
+        <tfoot><tr data-kpi-foot></tr></tfoot>
+      </table>
+    </div>
+    <nav class="kpi-pages" data-kpi-pages hidden aria-label="صفحه‌های جدول"></nav>
+  </div>
+</div>
+
 <div id="chart-customers-page" class="chart-customers-page" hidden>
   <div class="chart-customers-sheet">
     <button type="button" class="chart-customers-back" data-customers-back>
@@ -558,5 +612,5 @@
 {% endblock %}
 {% block scripts %}
 <script src="{% static 'vendor/chart.umd.min.js' %}"></script>
-<script src="{% static 'panel/dashboard.js' %}?v=59"></script>
+<script src="{% static 'panel/dashboard.js' %}?v=68"></script>
 {% endblock %}

@@ -252,9 +252,9 @@
       data: {
         labels,
         datasets: [
-          line('فروش ثابت', salesRepeat, '#1c8eaa', 'rgba(28, 142, 170, 0.28)', 'sales', true, people.salesRepeat),
+          line('فروش وفادار', salesRepeat, '#1c8eaa', 'rgba(28, 142, 170, 0.28)', 'sales', true, people.salesRepeat),
           line('فروش کل', salesTotal, '#7ec8db', 'rgba(126, 200, 219, 0.72)', 'sales', false, mergeBuyers(people.salesRepeat, people.salesOnce)),
-          line('سود ثابت', profitRepeat, '#0f8f5f', 'rgba(21, 153, 106, 0.92)', 'profit', true, people.profitRepeat),
+          line('سود وفادار', profitRepeat, '#0f8f5f', 'rgba(21, 153, 106, 0.92)', 'profit', true, people.profitRepeat),
           line('سود کل', profitTotal, '#1aa36c', 'rgba(134, 214, 176, 0.42)', 'profit', false, mergeBuyers(people.profitRepeat, people.profitOnce)),
         ],
       },
@@ -390,10 +390,11 @@
   }
 
   function placeCustomersPage() {
-    const page = customersPage();
     const nav = document.querySelector('header.sticky');
-    if (!page) return;
-    page.style.top = (nav ? nav.offsetHeight : 0) + 'px';
+    const top = (nav ? nav.offsetHeight : 0) + 'px';
+    [customersPage(), kpiPage()].forEach((page) => {
+      if (page) page.style.top = top;
+    });
   }
 
   function hideCustomers(card) {
@@ -406,6 +407,7 @@
   }
 
   function showCustomers(card, title, people, key) {
+    hideKpi();
     const page = customersPage();
     if (!page) return;
     people = Array.isArray(people) ? people : [];
@@ -547,8 +549,15 @@
       name.textContent = label;
       text.append(name);
       if (repeat && once) {
+        const total = (Number(repeat[index]) || 0) + (Number(once[index]) || 0);
+        const sum = document.createElement('b');
+        sum.className = 'sum';
+        sum.textContent = 'مجموع ' + textOf(total);
+        text.append(sum);
+      }
+      if (repeat && once) {
         text.append(
-          pieceButton(list, label + ' · مشتری ثابت', 'ثابت ' + textOf(repeat[index]), (loyalty.repeatBuyers || [])[index]),
+          pieceButton(list, label + ' · مشتری وفادار', 'وفادار ' + textOf(repeat[index]), (loyalty.repeatBuyers || [])[index]),
           pieceButton(list, label + ' · تک‌خرید', 'تک‌خرید ' + textOf(once[index]), (loyalty.onceBuyers || [])[index]),
         );
       } else {
@@ -593,7 +602,7 @@
         pushSlice(label, Number(values[index]) || 0, colors[index], '');
         return;
       }
-      pushSlice(label, Number(repeat[index]) || 0, colors[index], 'مشتری ثابت', (people.repeat || [])[index]);
+      pushSlice(label, Number(repeat[index]) || 0, colors[index], 'مشتری وفادار', (people.repeat || [])[index]);
       pushSlice(label, Number(once[index]) || 0, tone(colors[index]), 'تک‌خرید', (people.once || [])[index]);
     });
     const totals = split
@@ -659,7 +668,7 @@
       const pale = Array.isArray(pair.color) ? pair.color.map((color) => soften(color)) : soften(pair.color);
       return [
         {
-          label: single ? 'مشتری ثابت' : pair.label + ' · ثابت',
+          label: single ? 'مشتری وفادار' : pair.label + ' · وفادار',
           data: pair.repeat,
           customers: pair.repeatBuyers || null,
           backgroundColor: pair.color,
@@ -678,6 +687,53 @@
     });
   }
 
+  function loyaltyTotalPlugin() {
+    return {
+      id: 'loyaltyTotals',
+      afterDraw(chart) {
+        const datasets = chart.data.datasets || [];
+        const count = (chart.data.labels || []).length;
+        const horizontal = chart.options.indexAxis === 'y';
+        const groups = new Map();
+        datasets.forEach((dataset, datasetIndex) => {
+          const key = dataset.stack || 'loyalty';
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(datasetIndex);
+        });
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '800 11px Vazirmatn, sans-serif';
+        ctx.fillStyle = '#0f172a';
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+        ctx.lineJoin = 'round';
+        for (let index = 0; index < count; index += 1) {
+          groups.forEach((indexes) => {
+            const total = indexes.reduce((sum, datasetIndex) => sum + (Number(datasets[datasetIndex].data[index]) || 0), 0);
+            if (!total) return;
+            const anchor = chart.getDatasetMeta(indexes[0]).data[index];
+            if (!anchor) return;
+            const scale = horizontal ? chart.scales.x : chart.scales.y;
+            const end = scale.getPixelForValue(total);
+            const text = moneyText(total);
+            if (horizontal) {
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'middle';
+              ctx.strokeText(text, end + 6, anchor.y);
+              ctx.fillText(text, end + 6, anchor.y);
+            } else {
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'bottom';
+              ctx.strokeText(text, anchor.x, end - 3);
+              ctx.fillText(text, anchor.x, end - 3);
+            }
+          });
+        }
+        ctx.restore();
+      },
+    };
+  }
+
   function pairBar(labels, pairs, horizontal, kind, valueAxis) {
     if (!labels || !labels.length) return null;
     const valueScale = Object.assign({
@@ -686,6 +742,7 @@
       grid,
       ticks: moneyTicks(pairs.flatMap((pair) => [].concat(pair.repeat || [], pair.once || []))),
     }, valueAxis || {});
+    valueScale.grace = horizontal ? '6%' : '20%';
     const categoryScale = {
       stacked: true,
       grid: { display: false },
@@ -694,11 +751,14 @@
     };
     return {
       type: 'bar',
+      barRows: horizontal ? labels.length : 0,
+      plugins: [loyaltyTotalPlugin()],
       data: { labels, datasets: loyaltySets(pairs) },
       options: {
         indexAxis: horizontal ? 'y' : 'x',
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: horizontal ? { right: 78, left: 2, top: 4, bottom: 4 } : { top: 4, right: 8, bottom: 0, left: 8 } },
         plugins: { legend: loyaltyLegend(), tooltip: tip(kind, true) },
         scales: {
           x: horizontal ? valueScale : categoryScale,
@@ -1171,6 +1231,415 @@
   const chartsUrl = payload.chartsUrl || '';
   const rangeLoads = {};
   const kpiByRange = { all: payload.kpis || [] };
+  const kpiTablesByRange = { all: payload.kpiTables || { invoices: [], receipts: [] } };
+  let kpiState = null;
+
+  const KPI_VIEWS = {
+    total: {
+      source: 'فروش کل',
+      title: 'فاکتورهای فروش',
+      unit: 'فاکتور',
+      empty: 'فاکتوری در این بازه نیست.',
+      rows: (tables) => (tables.invoices || []).slice(),
+      sortIndex: 2,
+      sortDir: -1,
+      columns: [
+        { label: 'شماره فاکتور', text: (row) => row.number, link: 'sale' },
+        { label: 'مشتری', text: (row) => row.customer, link: 'customer' },
+        { label: 'مبلغ فروش', money: true, sum: true, text: (row) => row.sale },
+        { label: 'تاریخ', text: (row) => row.date },
+        { label: 'تسویه', text: (row) => row.settlement },
+        { label: 'کارشناس', text: (row) => row.expert },
+      ],
+    },
+    received: {
+      source: 'کل دریافتی (نقد/کارت)',
+      title: 'واریزهای نقد، کارت و چک وصول‌شده',
+      unit: 'واریز',
+      empty: 'دریافتی‌ای در این بازه نیست.',
+      rows: (tables) => (tables.receipts || []).slice(),
+      sortIndex: 4,
+      sortDir: -1,
+      columns: [
+        { label: 'مشتری', text: (row) => row.customer, link: 'customer' },
+        { label: 'مبلغ', money: true, sum: true, text: (row) => row.amount },
+        { label: 'شماره فاکتور', text: (row) => row.number, link: 'sale' },
+        { label: 'روش', text: (row) => row.method },
+        { label: 'تاریخ', text: (row) => row.date },
+      ],
+    },
+    outstanding: {
+      source: 'مطالبات (بدهی مشتریان)',
+      title: 'فاکتورهای دارای مانده',
+      unit: 'فاکتور',
+      empty: 'مطالبه‌ای در این بازه نیست.',
+      rows: (tables) => (tables.invoices || []).filter((row) => row.outstanding > 0),
+      sortIndex: 1,
+      sortDir: -1,
+      columns: [
+        { label: 'مشتری', text: (row) => row.customer, link: 'customer' },
+        { label: 'مانده', money: true, sum: true, tone: 'debt', text: (row) => row.outstanding },
+        { label: 'مانده نقدی', money: true, sum: true, tone: 'debt', text: (row) => row.cashDue },
+        { label: 'شماره فاکتور', text: (row) => row.number, link: 'sale' },
+        { label: 'مبلغ فروش', money: true, text: (row) => row.sale },
+        { label: 'وصول‌شده', money: true, text: (row) => row.received },
+        { label: 'تاریخ', text: (row) => row.date },
+      ],
+    },
+    profit: {
+      source: 'سود کل ناخالص',
+      title: 'سود هر فاکتور',
+      unit: 'فاکتور',
+      empty: 'فاکتوری در این بازه نیست.',
+      rows: (tables) => (tables.invoices || []).slice(),
+      sortIndex: 1,
+      sortDir: -1,
+      columns: [
+        { label: 'مشتری', text: (row) => row.customer, link: 'customer' },
+        { label: 'سود', money: true, sum: true, tone: 'profit', text: (row) => row.profit },
+        { label: 'شماره فاکتور', text: (row) => row.number, link: 'sale' },
+        { label: 'فروش', money: true, text: (row) => row.sale },
+        { label: 'خرید', money: true, text: (row) => row.cost },
+        { label: 'تاریخ', text: (row) => row.date },
+      ],
+    },
+    count: {
+      source: 'تعداد فاکتورها',
+      title: 'فهرست فاکتورها',
+      unit: 'فاکتور',
+      empty: 'فاکتوری در این بازه نیست.',
+      rows: (tables) => (tables.invoices || []).slice(),
+      sortIndex: 3,
+      sortDir: -1,
+      columns: [
+        { label: 'شماره فاکتور', text: (row) => row.number, link: 'sale' },
+        { label: 'مشتری', text: (row) => row.customer, link: 'customer' },
+        { label: 'مبلغ فروش', money: true, text: (row) => row.sale },
+        { label: 'تاریخ', text: (row) => row.date },
+        { label: 'تسویه', text: (row) => row.settlement },
+        { label: 'کارشناس', text: (row) => row.expert },
+      ],
+    },
+    checks: {
+      source: 'مانده‌های چکی',
+      title: 'چک‌های وصول‌نشده',
+      unit: 'چک',
+      empty: 'چک وصول‌نشده‌ای در این بازه نیست.',
+      rows: (tables) => (tables.checks || []).slice(),
+      sortIndex: 1,
+      sortDir: -1,
+      columns: [
+        { label: 'مشتری', text: (row) => row.customer, link: 'customer' },
+        { label: 'مبلغ', money: true, sum: true, tone: 'debt', text: (row) => row.amount },
+        { label: 'شماره چک', text: (row) => row.checkNumber },
+        { label: 'وضعیت', text: (row) => row.status },
+        { label: 'سررسید', text: (row) => row.date },
+        { label: 'شماره فاکتور', text: (row) => row.number, link: 'sale' },
+      ],
+    },
+    loyal: {
+      source: 'تعداد مشتریان وفادار',
+      title: 'مشتریان با بیش از یک فاکتور',
+      unit: 'مشتری',
+      empty: 'مشتری وفاداری در این بازه نیست.',
+      header: 'count',
+      rows: (tables) => (tables.customers || []).slice(),
+      sortIndex: 2,
+      sortDir: -1,
+      columns: [
+        { label: 'مشتری', text: (row) => row.customer, link: 'customer' },
+        { label: 'تعداد فاکتور', plain: true, text: (row) => row.invoices },
+        { label: 'مبلغ فروش', money: true, sum: true, text: (row) => row.sale },
+        { label: 'مانده', money: true, sum: true, tone: 'debt', text: (row) => row.outstanding },
+      ],
+    },
+  };
+
+  function kpiPage() {
+    return document.getElementById('kpi-detail-page');
+  }
+
+  function kpiRangeKey() {
+    const panel = document.querySelector('[data-kpi-panel]');
+    if (!panel) return 'all';
+    const from = panel.querySelector('[data-from]');
+    const to = panel.querySelector('[data-to]');
+    if (!from || !to) return 'all';
+    if (from.value && to.value && from.value > to.value) {
+      const swap = from.value;
+      from.value = to.value;
+      to.value = swap;
+    }
+    return spanKey(from.value, to.value);
+  }
+
+  function kpiRangeLabel() {
+    const panel = document.querySelector('[data-kpi-panel]');
+    if (!panel) return '';
+    const from = panel.querySelector('[data-from]');
+    const to = panel.querySelector('[data-to]');
+    if (!from || !to) return '';
+    const start = from.options[from.selectedIndex] ? from.options[from.selectedIndex].text : '';
+    const end = to.options[to.selectedIndex] ? to.options[to.selectedIndex].text : '';
+    if (!start || !end || start === end) return start;
+    return 'از ' + start + ' تا ' + end;
+  }
+
+  function kpiLink(kind, row, text) {
+    const label = text || '—';
+    if (kind === 'sale' && salesBase) {
+      const link = document.createElement('a');
+      link.href = salesBase + row.id + '/';
+      link.textContent = label;
+      return link;
+    }
+    if (kind === 'customer' && row.customerId) {
+      const link = document.createElement('a');
+      link.href = customerHref(row.customerId);
+      link.textContent = label;
+      return link;
+    }
+    return document.createTextNode(label);
+  }
+
+  function hideKpi() {
+    const page = kpiPage();
+    if (!page || page.hidden) return;
+    page.hidden = true;
+    document.body.classList.remove('chart-customers-open');
+    kpiState = null;
+  }
+
+  const KPI_PAGE_SIZE = 10;
+
+  function kpiCompare(col, a, b) {
+    const left = col.text(a);
+    const right = col.text(b);
+    const diff = col.money
+      ? (Number(left) || 0) - (Number(right) || 0)
+      : String(left || '').localeCompare(String(right || ''), 'fa', { numeric: true, sensitivity: 'base' });
+    if (diff) return diff;
+    return String(a.number || '').localeCompare(String(b.number || ''), 'fa', { numeric: true });
+  }
+
+  function paintKpiPages(nav, page, pages) {
+    if (!nav) return;
+    if (pages <= 1) {
+      nav.hidden = true;
+      nav.replaceChildren();
+      return;
+    }
+    nav.hidden = false;
+    const items = [];
+    function addButton(label, target, extra) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'kpi-page' + (extra || '');
+      button.textContent = label;
+      button.dataset.kpiPage = String(target);
+      if (extra && extra.indexOf('is-current') !== -1) button.setAttribute('aria-current', 'page');
+      items.push(button);
+      return button;
+    }
+    const prev = addButton('قبلی', page - 1);
+    prev.disabled = page <= 1;
+    const windowStart = Math.max(1, page - 2);
+    const windowEnd = Math.min(pages, page + 2);
+    if (windowStart > 1) addButton(fa(1), 1, page === 1 ? ' is-current' : '');
+    if (windowStart > 2) {
+      const gap = document.createElement('span');
+      gap.textContent = '…';
+      items.push(gap);
+    }
+    for (let number = windowStart; number <= windowEnd; number += 1) {
+      if (number === 1 && windowStart > 1) continue;
+      addButton(fa(number), number, number === page ? ' is-current' : '');
+    }
+    if (windowEnd < pages - 1) {
+      const gap = document.createElement('span');
+      gap.textContent = '…';
+      items.push(gap);
+    }
+    if (windowEnd < pages) addButton(fa(pages), pages, page === pages ? ' is-current' : '');
+    const next = addButton('بعدی', page + 1);
+    next.disabled = page >= pages;
+    nav.replaceChildren(...items);
+  }
+
+  function renderKpi(query) {
+    const page = kpiPage();
+    const view = kpiState && KPI_VIEWS[kpiState.key];
+    if (!page || !view) return;
+    const head = page.querySelector('[data-kpi-head]');
+    const body = page.querySelector('[data-kpi-body]');
+    const foot = page.querySelector('[data-kpi-foot]');
+    const pager = page.querySelector('[data-kpi-pages]');
+    const sortIndex = Math.min(view.columns.length - 1, Math.max(0, kpiState.sortIndex || 0));
+    const sortDir = kpiState.sortDir === 1 ? 1 : -1;
+    head.replaceChildren(...view.columns.map((col, index) => {
+      const cell = document.createElement('th');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'kpi-sort' + (index === sortIndex ? ' is-active' : '');
+      button.dataset.kpiSort = String(index);
+      button.append(document.createTextNode(col.label));
+      const mark = document.createElement('span');
+      mark.className = 'kpi-sort-mark';
+      mark.setAttribute('aria-hidden', 'true');
+      mark.textContent = index === sortIndex ? (sortDir < 0 ? '↓' : '↑') : '↕';
+      button.append(mark);
+      cell.append(button);
+      if (index === sortIndex) cell.setAttribute('aria-sort', sortDir < 0 ? 'descending' : 'ascending');
+      else cell.setAttribute('aria-sort', 'none');
+      return cell;
+    }));
+    const source = kpiRangeLabel();
+    page.querySelector('[data-kpi-source]').textContent = source ? view.source + ' · ' + source : view.source;
+    page.querySelector('[data-kpi-title]').textContent = view.title;
+    const totalEl = page.querySelector('[data-kpi-total]');
+    if (kpiState.loading) {
+      page.querySelector('[data-kpi-count]').textContent = 'در حال بارگذاری';
+      if (totalEl) totalEl.hidden = true;
+      if (pager) {
+        pager.hidden = true;
+        pager.replaceChildren();
+      }
+      body.replaceChildren();
+      foot.replaceChildren();
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = view.columns.length;
+      cell.className = 'chart-customers-empty';
+      cell.textContent = 'در حال بارگذاری جدول…';
+      row.append(cell);
+      body.append(row);
+      return;
+    }
+    let rows = view.rows(kpiState.tables || {});
+    const sortCol = view.columns[sortIndex];
+    if (sortCol) rows.sort((a, b) => sortDir * kpiCompare(sortCol, a, b));
+    const unfiltered = rows.length;
+    const sumCol = view.columns.find((col) => col.sum);
+    if (totalEl) {
+      if (view.header === 'count') {
+        totalEl.hidden = false;
+        totalEl.textContent = kpiText(unfiltered, true);
+      } else if (sumCol) {
+        const sum = rows.reduce((totalSum, item) => totalSum + (Number(sumCol.text(item)) || 0), 0);
+        totalEl.hidden = false;
+        totalEl.textContent = fa(sum);
+      } else {
+        totalEl.hidden = true;
+      }
+    }
+    const total = rows.length;
+    const q = String(query || '').trim().toLowerCase();
+    if (q) {
+      rows = rows.filter((row) => view.columns.some((col) => !col.money && String(col.text(row) || '').toLowerCase().includes(q)));
+    }
+    const count = page.querySelector('[data-kpi-count]');
+    if (!total) count.textContent = 'بدون ' + view.unit;
+    else if (rows.length === total) count.textContent = fa(total) + ' ' + view.unit;
+    else count.textContent = fa(rows.length) + ' از ' + fa(total) + ' ' + view.unit;
+    const pages = Math.max(1, Math.ceil(rows.length / KPI_PAGE_SIZE));
+    if (kpiState.page > pages) kpiState.page = pages;
+    if (!kpiState.page || kpiState.page < 1) kpiState.page = 1;
+    const pageRows = rows.slice((kpiState.page - 1) * KPI_PAGE_SIZE, kpiState.page * KPI_PAGE_SIZE);
+    paintKpiPages(pager, kpiState.page, rows.length ? pages : 1);
+    body.replaceChildren();
+    if (!rows.length) {
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = view.columns.length;
+      cell.className = 'chart-customers-empty';
+      cell.textContent = q ? 'موردی با این جستجو پیدا نشد.' : view.empty;
+      row.append(cell);
+      body.append(row);
+      foot.replaceChildren();
+      return;
+    }
+    pageRows.forEach((item) => {
+      const row = document.createElement('tr');
+      view.columns.forEach((col) => {
+        const cell = document.createElement('td');
+        const raw = col.text(item);
+        if (col.money) {
+          cell.className = 'amount';
+          cell.dir = 'ltr';
+          const n = Number(raw) || 0;
+          if (col.tone === 'debt' && n > 0) cell.className = 'is-debt';
+          if (col.tone === 'profit') cell.className = n < 0 ? 'is-debt' : 'is-profit';
+          cell.textContent = fa(n);
+        } else {
+          cell.append(kpiLink(col.link, item, col.plain ? fa(raw) : raw));
+        }
+        row.append(cell);
+      });
+      body.append(row);
+    });
+    if (!view.columns.some((col) => col.sum)) {
+      foot.replaceChildren();
+      return;
+    }
+    foot.replaceChildren(...view.columns.map((col, index) => {
+      const cell = document.createElement('td');
+      if (col.sum) {
+        const sum = rows.reduce((totalSum, item) => totalSum + (Number(col.text(item)) || 0), 0);
+        cell.className = col.tone === 'debt' ? 'is-debt' : 'amount';
+        cell.dir = 'ltr';
+        cell.textContent = fa(sum);
+      } else if (index === 0) {
+        cell.textContent = 'جمع';
+      }
+      return cell;
+    }));
+  }
+
+  function showKpi(key, tables, reset) {
+    const view = KPI_VIEWS[key];
+    const page = kpiPage();
+    if (!view || !page) return;
+    hideCustomers();
+    placeCustomersPage();
+    const keep = kpiState && kpiState.key === key && !reset;
+    kpiState = {
+      key,
+      tables: tables || { invoices: [], receipts: [] },
+      loading: !tables,
+      page: keep ? kpiState.page : 1,
+      sortIndex: keep ? kpiState.sortIndex : view.sortIndex,
+      sortDir: keep ? kpiState.sortDir : view.sortDir,
+    };
+    page.hidden = false;
+    document.body.classList.add('chart-customers-open');
+    const search = page.querySelector('[data-kpi-search]');
+    if (reset && search) search.value = '';
+    renderKpi(search ? search.value : '');
+    if (reset) {
+      page.scrollTop = 0;
+      const back = page.querySelector('[data-kpi-back]');
+      if (back) back.focus();
+    }
+  }
+
+  function openKpi(key) {
+    if (!KPI_VIEWS[key]) return;
+    const range = kpiRangeKey();
+    const ready = kpiTablesByRange[range];
+    if (ready) {
+      showKpi(key, ready, true);
+      return;
+    }
+    showKpi(key, null, true);
+    loadCharts(range).then(() => {
+      paintKpis(kpiByRange[range] || kpiByRange.all);
+      if (!kpiState || kpiState.key !== key) return;
+      showKpi(key, kpiTablesByRange[range] || { invoices: [], receipts: [] }, false);
+    }).catch(() => {
+      if (!kpiState || kpiState.key !== key) return;
+      showKpi(key, { invoices: [], receipts: [] }, false);
+    });
+  }
 
   function kpiText(value, plain) {
     const n = Math.round(Number(value) || 0);
@@ -1219,6 +1688,7 @@
       .then((data) => {
         byRange[key] = data.charts || {};
         if (data.kpis) kpiByRange[key] = data.kpis;
+        if (data.kpiTables) kpiTablesByRange[key] = data.kpiTables;
         return byRange[key];
       })
       .finally(() => {
@@ -1270,6 +1740,8 @@
       return;
     }
     if (spec.options && (spec.data.datasets || []).some((dataset) => dataset.customers)) watchCursor(spec);
+    const frame = el.parentElement;
+    if (frame && spec.barRows) frame.style.height = Math.max(280, spec.barRows * 24 + 64) + 'px';
     new Chart(el, spec);
     if (shareList && spec.loyalty) renderShare(el, spec.loyalty);
     renderLevelLegend(card, spec.levelLegend);
@@ -1281,12 +1753,72 @@
   });
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') hideCustomers();
+    if (event.key !== 'Escape') return;
+    hideCustomers();
+    hideKpi();
   });
+
+  document.addEventListener('click', (event) => {
+    if (event.target.closest('[data-kpi-back]')) hideKpi();
+  });
+
+  const kpiRoot = document.querySelector('[data-kpis]');
+  if (kpiRoot) {
+    kpiRoot.addEventListener('click', (event) => {
+      const card = event.target.closest('[data-kpi-card]');
+      if (card) openKpi(card.dataset.kpiCard);
+    });
+    kpiRoot.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const card = event.target.closest('[data-kpi-card]');
+      if (!card) return;
+      event.preventDefault();
+      openKpi(card.dataset.kpiCard);
+    });
+  }
+  const kpiSearch = document.querySelector('[data-kpi-search]');
+  if (kpiSearch) {
+    kpiSearch.addEventListener('input', () => {
+      if (!kpiState) return;
+      kpiState.page = 1;
+      renderKpi(kpiSearch.value);
+    });
+  }
+
+  const kpiDetail = document.getElementById('kpi-detail-page');
+  if (kpiDetail) {
+    kpiDetail.addEventListener('click', (event) => {
+      if (!kpiState) return;
+      const sort = event.target.closest('[data-kpi-sort]');
+      if (sort) {
+        const index = Number(sort.dataset.kpiSort);
+        const view = KPI_VIEWS[kpiState.key];
+        const col = view && view.columns[index];
+        if (!col) return;
+        if (kpiState.sortIndex === index) kpiState.sortDir = kpiState.sortDir === 1 ? -1 : 1;
+        else {
+          kpiState.sortIndex = index;
+          kpiState.sortDir = col.money ? -1 : 1;
+        }
+        kpiState.page = 1;
+        renderKpi(kpiSearch ? kpiSearch.value : '');
+        return;
+      }
+      const jump = event.target.closest('[data-kpi-page]');
+      if (!jump || jump.disabled) return;
+      const target = Number(jump.dataset.kpiPage);
+      if (!target || target === kpiState.page) return;
+      kpiState.page = target;
+      renderKpi(kpiSearch ? kpiSearch.value : '');
+      const table = kpiDetail.querySelector('.chart-customers-table');
+      if (table) kpiDetail.scrollTop = Math.max(0, table.offsetTop - 12);
+    });
+  }
 
   window.addEventListener('resize', () => {
     const page = customersPage();
-    if (page && !page.hidden) placeCustomersPage();
+    const detail = kpiPage();
+    if ((page && !page.hidden) || (detail && !detail.hidden)) placeCustomersPage();
   });
 
   document.querySelectorAll('[data-chart]').forEach((card) => {
@@ -1339,10 +1871,14 @@
       const ready = kpiByRange[key];
       if (ready) {
         paintKpis(ready);
+        if (kpiState) showKpi(kpiState.key, kpiTablesByRange[key] || kpiTablesByRange.all, false);
         return;
       }
       if (cards) cards.classList.add('is-loading');
-      loadCharts(key).then(() => paintKpis(kpiByRange[key])).catch(() => paintKpis(kpiByRange.all)).finally(() => {
+      loadCharts(key).then(() => {
+        paintKpis(kpiByRange[key]);
+        if (kpiState) showKpi(kpiState.key, kpiTablesByRange[key] || kpiTablesByRange.all, false);
+      }).catch(() => paintKpis(kpiByRange.all)).finally(() => {
         if (cards) cards.classList.remove('is-loading');
       });
     }

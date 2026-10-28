@@ -1,6 +1,7 @@
 import os
 import re
 from datetime import date
+from decimal import Decimal
 
 from django.contrib import messages
 from django.core.files.base import ContentFile
@@ -166,7 +167,7 @@ def _rows_from_post(request):
         name = name.strip()
         price = parse_money(prices[idx] if idx < len(prices) else 0)
         cost = parse_money(costs[idx] if idx < len(costs) else 0)
-        if not name and price <= 0:
+        if not name and price <= 0 and cost <= 0:
             continue
         raw_qty = to_en_digits(qtys[idx] if idx < len(qtys) else '')
         raw_qty = raw_qty.replace('٬', '').replace(',', '').replace('٫', '.')
@@ -175,8 +176,6 @@ def _rows_from_post(request):
             qty_num = float(raw_qty) if raw_qty else 0
         except ValueError:
             qty_num = 0
-        if qty_num < 1:
-            qty_num = 1
         lines.append({'product_name': name, 'qty': qty_num, 'unit_price': price, 'unit_cost': cost})
 
     for idx, amount in enumerate(request.POST.getlist('pay_amount')):
@@ -252,7 +251,7 @@ def _credit_from_post(request):
     return data, guarantees, references, docs, warnings
 
 
-def _validate(seller, sold_on, settlement, customer_type, name, phone, city, address, lines, checks, defer):
+def _validate(seller, sold_on, settlement, customer_type, name, phone, city, address, lines, payments, checks, defer):
     errors = []
     if seller is None:
         errors.append('فروشنده را انتخاب کنید.')
@@ -270,19 +269,30 @@ def _validate(seller, sold_on, settlement, customer_type, name, phone, city, add
         errors.append('شهر / استان ضروری است.')
     if not address:
         errors.append('آدرس ضروری است.')
-    good_lines = [ln for ln in lines if ln['product_name'] and ln['unit_price'] > 0 and ln['qty'] > 0]
-    if not good_lines:
-        errors.append('حداقل یک قلم فاکتور با نام، تعداد و قیمت لازم است.')
+    filled = [
+        ln for ln in lines
+        if ln['product_name'] or ln['unit_price'] > 0 or ln['unit_cost'] > 0
+    ]
+    if not filled:
+        errors.append('هر قلم فاکتور باید کالا، تعداد، قیمت فروش و قیمت خرید داشته باشد.')
+    else:
+        if any(not ln['product_name'] for ln in filled):
+            errors.append('کالای هر قلم فاکتور را انتخاب کنید.')
+        if any(ln['qty'] < 1 for ln in filled):
+            errors.append('تعداد هر قلم فاکتور را وارد کنید.')
+        if any(ln['unit_price'] <= 0 for ln in filled):
+            errors.append('قیمت فروش هر واحد برای هر قلم فاکتور لازم است.')
+        if any(ln['unit_cost'] <= 0 for ln in filled):
+            errors.append('قیمت خرید هر واحد برای هر قلم فاکتور لازم است.')
+    if not any(int(pay.get('amount') or 0) > 0 for pay in payments):
+        errors.append('حداقل یک پرداختی لازم است.')
     if settlement == 'قسطی' and not checks:
         errors.append('فروش قسطی حداقل یک چک می‌خواهد.')
     for chk in checks:
         if not chk['due_on']:
             errors.append('تاریخ سررسید چک باید پر شود.')
             break
-    sale = sum(int(ln['qty'] * ln['unit_price']) for ln in good_lines)
-    if sale <= 0:
-        errors.append('جمع فاکتور صفر است.')
-    return errors, good_lines, bool(errors and defer)
+    return errors, filled, bool(errors and defer)
 
 
 def _saved_date(value):
@@ -314,15 +324,14 @@ def request_gaps(req):
             'product_name': str(raw.get('product_name') or '').strip(),
             'qty': _as_float(raw.get('qty')),
             'unit_price': _as_float(raw.get('unit_price')),
+            'unit_cost': _as_float(raw.get('unit_cost')),
         })
     checks = [{'due_on': _saved_date(raw.get('due_on'))} for raw in (req.checks or [])]
+    payments = [{'amount': _as_float(raw.get('amount'))} for raw in (req.payments or [])]
     errors, _good, _flag = _validate(
         req.seller, req.sold_on, req.settlement, req.customer_type,
-        req.customer_name, req.phone, req.city, req.address, lines, checks, True,
+        req.customer_name, req.phone, req.city, req.address, lines, payments, checks, True,
     )
-    line_error = 'حداقل یک قلم فاکتور با نام، تعداد و قیمت لازم است.'
-    if line_error in errors:
-        errors = [err for err in errors if err != 'جمع فاکتور صفر است.']
     return errors
 
 
@@ -526,6 +535,14 @@ def _form_context(request, current, sellers, prefill, errors, warnings, autofill
     }
 
 
+def _purchase_total(lines):
+    """جمع خرید فاکتور: تعداد هر قلم ضربدر قیمت خرید همان واحد."""
+    total = 0
+    for line in lines:
+        total += int(Decimal(str(line.qty or 0)) * int(line.unit_cost or 0))
+    return total
+
+
 def _next_invoice_number():
     """شماره پنج‌رقمی بعدی، یکی بیشتر از بزرگ‌ترین فاکتور عددی موجود."""
     highest = 0
@@ -562,7 +579,7 @@ def _save_request(request, current, sellers):
     lines, payments, checks = _rows_from_post(request)
     credit, guarantees, references, docs, warnings = _credit_from_post(request)
     errors, good_lines, incomplete = _validate(
-        seller, sold_on, settlement, customer_type, name, phone, city, address, lines, checks, defer,
+        seller, sold_on, settlement, customer_type, name, phone, city, address, lines, payments, checks, defer,
     )
     if errors and not defer:
         messages.error(request, 'فرم کامل نیست.')
@@ -685,6 +702,7 @@ def request_review(request, pk):
                         sold_on=req.sold_on, settlement=req.settlement,
                         status='در حال پیگیری' if req.settlement == 'قسطی' else 'تکمیل شده',
                         note=req.note,
+                        purchase_amount=_purchase_total(req.line_list),
                     )
                 break
             except IntegrityError:

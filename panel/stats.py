@@ -7,6 +7,7 @@ from django.utils import timezone
 from .access import visible_invoices
 from .jalali import (
     format_day_month,
+    format_jalali,
     gregorian_to_jalali,
     month_axis_label,
     month_key,
@@ -26,6 +27,12 @@ TICKET_BUCKETS = [
 ]
 
 
+def check_is_cleared(status):
+    """وصول با هر املایی، از جمله «وصول شد» و «وصول‌شده»."""
+    compact = (status or '').replace('\u200c', '').replace(' ', '')
+    return compact.startswith('وصول')
+
+
 def received_of(invoice):
     cash = sum(p.amount for p in invoice.payments.all())
     cleared = sum(c.amount for c in invoice.checks.all() if c.status == 'وصول‌شده')
@@ -34,6 +41,13 @@ def received_of(invoice):
 
 def outstanding_of(invoice):
     return max(0, invoice.sale_amount - received_of(invoice))
+
+
+def cash_due_of(invoice):
+    """بخشی از فاکتور که نه پرداخت شده و نه با چک پوشش داده شده است."""
+    checks = sum(c.amount for c in invoice.checks.all())
+    paid = sum(p.amount for p in invoice.payments.all())
+    return max(0, int(invoice.sale_amount) - int(checks) - int(paid))
 
 
 def _range_start(key, today):
@@ -88,7 +102,7 @@ def period_months(user):
 
 
 def repeat_customer_ids(user):
-    """مشتری ثابت: بیش از یک فاکتور غیرلغو. مستقل از بازه نمودار است."""
+    """مشتری وفادار: بیش از یک فاکتور غیرلغو. مستقل از بازه نمودار است."""
     counts = defaultdict(int)
     for row in visible_invoices(user):
         if row.status != 'لغو شده' and row.sold_on:
@@ -147,6 +161,13 @@ def build_dashboard(user, range_key='all', person='', month='all', team_month='a
     total_cost = sum(i.cost_amount for i in invoices)
     received = sum(received_of(i) for i in invoices)
     outstanding = sum(outstanding_of(i) for i in invoices)
+    check_due = sum(
+        int(chk.amount or 0)
+        for inv in invoices
+        for chk in inv.checks.all()
+        if not check_is_cleared(chk.status)
+    )
+    loyal_count = len({inv.customer_id for inv in invoices if inv.customer_id in repeat_ids})
     cash_sales = sum(i.sale_amount for i in invoices if i.settlement == 'نقدی')
     inst_sales = sum(i.sale_amount for i in invoices if i.settlement == 'قسطی')
 
@@ -156,6 +177,8 @@ def build_dashboard(user, range_key='all', person='', month='all', team_month='a
         {'key': 'outstanding', 'label': 'مطالبات (بدهی مشتریان)', 'value': outstanding, 'note': 'پولی که هنوز وصول نشده', 'tone': 'c3'},
         {'key': 'profit', 'label': 'سود کل ناخالص', 'value': total_sales - total_cost, 'note': 'مابه‌التفاوت فروش و خرید', 'tone': 'c2'},
         {'key': 'count', 'label': 'تعداد فاکتورها', 'value': len(invoices), 'note': 'مجموع سفارشات موفق', 'tone': 'c6', 'plain': True},
+        {'key': 'checks', 'label': 'مانده‌های چکی', 'value': check_due, 'note': 'چک‌هایی که هنوز وصول نشده', 'tone': 'c5'},
+        {'key': 'loyal', 'label': 'تعداد مشتریان وفادار', 'value': loyal_count, 'note': 'مشتری با بیش از یک فاکتور', 'tone': 'c7', 'plain': True},
     ]
 
     by_day = defaultdict(lambda: {'sales': 0, 'profit': 0})
@@ -486,7 +509,7 @@ def build_dashboard(user, range_key='all', person='', month='all', team_month='a
         'detail': detail,
         'levels': SPECIALIST_LEVELS,
         'charts': charts,
-        'invoice_count': len(invoices),
+        'kpi_tables': _kpi_details(invoices, repeat_ids),
         'base_salary': BASE_SALARY,
     }
 
@@ -711,6 +734,107 @@ def _check_calendar(checks):
         'end': [end_y, end_m],
         'focus': [today_y, today_m],
         'marks': dict(marks),
+    }
+
+
+def _kpi_stamp(value):
+    if not value:
+        return ''
+    return value.isoformat()
+
+
+def _kpi_details(invoices, repeat_ids):
+    """ردیف‌هایی که جمع‌شان همان شاخص‌های بالای داشبورد است."""
+    invoice_rows = []
+    receipt_rows = []
+    check_rows = []
+    loyal = {}
+    for inv in invoices:
+        got = int(received_of(inv))
+        debt = int(outstanding_of(inv))
+        invoice_rows.append({
+            'id': inv.pk,
+            'number': inv.number,
+            'customer': inv.customer.name,
+            'customerId': inv.customer_id,
+            'date': format_jalali(inv.sold_on),
+            'settlement': inv.settlement or '',
+            'expert': inv.expert_label,
+            'sale': int(inv.sale_amount),
+            'cost': int(inv.cost_amount),
+            'profit': int(inv.profit),
+            'received': got,
+            'outstanding': debt,
+            'cashDue': int(cash_due_of(inv)),
+            '_sort': _kpi_stamp(inv.sold_on),
+        })
+        if inv.customer_id in repeat_ids:
+            person = loyal.get(inv.customer_id)
+            if person is None:
+                person = {
+                    'id': inv.pk,
+                    'customer': inv.customer.name,
+                    'customerId': inv.customer_id,
+                    'invoices': 0,
+                    'sale': 0,
+                    'outstanding': 0,
+                }
+                loyal[inv.customer_id] = person
+            person['invoices'] += 1
+            person['sale'] += int(inv.sale_amount)
+            person['outstanding'] += debt
+        for pay in inv.payments.all():
+            receipt_rows.append({
+                'id': inv.pk,
+                'number': inv.number,
+                'customer': inv.customer.name,
+                'customerId': inv.customer_id,
+                'method': pay.method or 'سایر',
+                'date': format_jalali(pay.paid_on),
+                'amount': int(pay.amount or 0),
+                '_sort': _kpi_stamp(pay.paid_on),
+            })
+        for chk in inv.checks.all():
+            amount = int(chk.amount or 0)
+            if chk.status == 'وصول‌شده':
+                receipt_rows.append({
+                    'id': inv.pk,
+                    'number': inv.number,
+                    'customer': inv.customer.name,
+                    'customerId': inv.customer_id,
+                    'method': 'چک وصول‌شده',
+                    'date': format_jalali(chk.due_on),
+                    'amount': amount,
+                    '_sort': _kpi_stamp(chk.due_on),
+                })
+            if check_is_cleared(chk.status):
+                continue
+            check_rows.append({
+                'id': inv.pk,
+                'number': inv.number,
+                'customer': inv.customer.name,
+                'customerId': inv.customer_id,
+                'checkNumber': chk.number or '—',
+                'status': chk.status or 'در جریان',
+                'date': format_jalali(chk.due_on),
+                'amount': amount,
+                '_sort': _kpi_stamp(chk.due_on),
+            })
+    invoice_rows.sort(key=lambda row: row['_sort'], reverse=True)
+    receipt_rows.sort(key=lambda row: (row['_sort'], row['amount']), reverse=True)
+    check_rows.sort(key=lambda row: (row['amount'], row['_sort']), reverse=True)
+    customer_rows = sorted(loyal.values(), key=lambda row: row['sale'], reverse=True)
+    for row in invoice_rows:
+        row.pop('_sort', None)
+    for row in receipt_rows:
+        row.pop('_sort', None)
+    for row in check_rows:
+        row.pop('_sort', None)
+    return {
+        'invoices': invoice_rows,
+        'receipts': receipt_rows,
+        'checks': check_rows,
+        'customers': customer_rows,
     }
 
 

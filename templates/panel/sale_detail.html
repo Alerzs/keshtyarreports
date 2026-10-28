@@ -31,7 +31,7 @@
   <h2 class="mb-3 text-lg font-extrabold">اقلام فاکتور</h2>
   <div class="overflow-auto">
     <table class="w-full text-right text-sm">
-      <thead class="text-muted"><tr><th class="py-2 font-extrabold">کالا</th><th class="font-extrabold">تعداد</th><th class="font-extrabold">قیمت واحد</th><th class="font-extrabold">مبلغ</th></tr></thead>
+      <thead class="text-muted"><tr><th class="py-2 font-extrabold">کالا</th><th class="font-extrabold">تعداد</th><th class="font-extrabold">قیمت فروش</th><th class="font-extrabold">مبلغ فروش</th><th class="font-extrabold">قیمت خرید</th><th class="font-extrabold">مبلغ خرید</th></tr></thead>
       <tbody>
         {% for line in lines %}
         <tr class="border-t border-line">
@@ -39,9 +39,11 @@
           <td>{{ line.qty|fa }}</td>
           <td class="whitespace-nowrap">{{ line.unit_price|money:money_unit }}</td>
           <td class="whitespace-nowrap font-extrabold">{{ line.amount|money:money_unit }}</td>
+          <td class="whitespace-nowrap">{{ line.unit_cost|money:money_unit }}</td>
+          <td class="whitespace-nowrap font-extrabold">{{ line.cost|money:money_unit }}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="4" class="py-6 text-center text-muted">قلمی ثبت نشده است.</td></tr>
+        <tr><td colspan="6" class="py-6 text-center text-muted">قلمی ثبت نشده است.</td></tr>
         {% endfor %}
       </tbody>
     </table>
