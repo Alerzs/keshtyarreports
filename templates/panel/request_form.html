@@ -198,6 +198,7 @@
                 <div><label class="label">مبلغ</label><input name="chk_amount" class="field" dir="ltr" placeholder="مبلغ" value="{{ chk.amount }}"></div>
                 <div><label class="label">سررسید</label><input name="chk_date" class="field cursor-pointer" data-jdate readonly placeholder="سررسید" value="{{ chk.due_on|input_date }}"></div>
                 <div><label class="label">بانک</label><input name="chk_bank" class="field" list="bankList" placeholder="بانک" value="{{ chk.bank }}"></div>
+                <div class="col-span-2"><label class="label">وضعیت</label><select name="chk_status" class="field">{% for st in check_states %}<option value="{{ st }}" {% if chk.status == st %}selected{% endif %}>{{ st }}</option>{% endfor %}</select></div>
               </div>
             </div>
             {% empty %}
@@ -208,6 +209,7 @@
                 <div><label class="label">مبلغ</label><input name="chk_amount" class="field" dir="ltr" placeholder="مبلغ"></div>
                 <div><label class="label">سررسید</label><input name="chk_date" class="field cursor-pointer" data-jdate readonly placeholder="سررسید"></div>
                 <div><label class="label">بانک</label><input name="chk_bank" class="field" list="bankList" placeholder="بانک"></div>
+                <div class="col-span-2"><label class="label">وضعیت</label><select name="chk_status" class="field">{% for st in check_states %}<option value="{{ st }}">{{ st }}</option>{% endfor %}</select></div>
               </div>
             </div>
             {% endfor %}
@@ -219,6 +221,7 @@
                 <div><label class="label">مبلغ</label><input name="chk_amount" class="field" dir="ltr" placeholder="مبلغ"></div>
                 <div><label class="label">سررسید</label><input name="chk_date" class="field cursor-pointer" data-jdate readonly placeholder="سررسید"></div>
                 <div><label class="label">بانک</label><input name="chk_bank" class="field" list="bankList" placeholder="بانک"></div>
+                <div class="col-span-2"><label class="label">وضعیت</label><select name="chk_status" class="field">{% for st in check_states %}<option value="{{ st }}">{{ st }}</option>{% endfor %}</select></div>
               </div>
             </div>
           {% endif %}

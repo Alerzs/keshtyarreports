@@ -15,14 +15,7 @@
 
 <section class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
   <article class="card p-4"><div class="text-xs font-bold text-muted">مبلغ فروش</div><b class="mt-1 block text-lg">{{ figures.sale|money:money_unit }}</b></article>
-  <article class="card p-4">
-    <div class="text-xs font-bold text-muted">مبلغ خرید</div>
-    <b class="mt-1 block text-lg">{{ figures.cost|money:money_unit }}</b>
-    <form method="post" action="{% url 'sale_purchase' invoice.pk %}" class="mt-3 flex items-center gap-2">{% csrf_token %}
-      <input name="purchase_amount" value="{{ invoice.purchase_amount }}" class="field !min-h-9 !py-2" inputmode="numeric" aria-label="ویرایش مبلغ خرید">
-      <button class="btn btn-primary !min-h-9 shrink-0 !px-3" type="submit">ثبت</button>
-    </form>
-  </article>
+  <article class="card p-4"><div class="text-xs font-bold text-muted">مبلغ خرید</div><b class="mt-1 block text-lg">{{ figures.cost|money:money_unit }}</b></article>
   <article class="card p-4"><div class="text-xs font-bold text-muted">جمع دریافتی</div><b class="mt-1 block text-lg text-emerald-700">{{ figures.received|money:money_unit }}</b></article>
   <article class="card p-4"><div class="text-xs font-bold text-muted">باقی‌مانده حساب</div><b class="mt-1 block text-lg {% if figures.outstanding %}text-rose-600{% endif %}">{{ figures.outstanding|money:money_unit }}</b></article>
 </section>
@@ -110,18 +103,13 @@
         <div><dt class="text-[11px] font-bold text-muted">مبلغ</dt><dd class="mt-0.5 font-extrabold">{{ chk.amount|money:money_unit }}</dd></div>
         <div><dt class="text-[11px] font-bold text-muted">سررسید</dt><dd class="mt-0.5 font-extrabold">{{ chk.due_on|jdate }}</dd></div>
       </dl>
-      <div class="mt-3 flex flex-wrap gap-2">
-        {% if chk.status != 'وصول‌شده' %}
-        <form method="post" action="{% url 'sale_collect' invoice.pk chk.pk %}">{% csrf_token %}
-          <button class="btn btn-green !min-h-9 !px-3 !py-1.5" type="submit">وصول شد</button>
-        </form>
-        {% endif %}
-        {% if chk.status != 'برگشتی' %}
-        <form method="post" action="{% url 'sale_bounce' invoice.pk chk.pk %}">{% csrf_token %}
-          <button class="btn btn-danger !min-h-9 !px-3 !py-1.5" type="submit">برگشت خورد</button>
-        </form>
-        {% endif %}
-      </div>
+      <form method="post" action="{% url 'sale_check_status' invoice.pk chk.pk %}" class="mt-3 flex flex-wrap items-center gap-2">{% csrf_token %}
+        <label class="label !mb-0" for="check-status-{{ chk.pk }}">وضعیت</label>
+        <select id="check-status-{{ chk.pk }}" name="status" class="field !min-h-9 !w-auto">
+          {% for st in check_states %}<option value="{{ st }}" {% if chk.status == st %}selected{% endif %}>{{ st }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-primary !min-h-9 !px-3 !py-1.5" type="submit">ثبت وضعیت</button>
+      </form>
     </div>
     {% empty %}
     <p class="text-sm font-semibold text-muted">چکی برای این فاکتور ثبت نشده است.</p>

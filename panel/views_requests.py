@@ -14,10 +14,11 @@ from .access import seller_choices, visible_customers, visible_requests
 from .backup import take_snapshot
 from .credit import (
     BANKS, CHECK_STATES, CREDIT_DOCS, CREDIT_SCHEMA, CUST_TYPES, GUARANTEE_TYPES,
-    PAY_METHODS, REFERENCE_RELATIONS, SETTLEMENTS,
+    PAY_METHODS, REFERENCE_RELATIONS, SETTLEMENTS, canonical_check_status,
 )
 from .decorators import page_required
 from .jalali import format_jalali, parse_jalali, parse_money, to_en_digits
+from .keshttamin import KeshttaminError, is_check_sale, sale_payload, send_check_sale
 from .models import (
     Check, Customer, CustomerDocument, Invoice, InvoiceLine, Operator, Payment, SaleDocument, SaleRequest,
 )
@@ -199,12 +200,14 @@ def _rows_from_post(request):
         numbers = request.POST.getlist('chk_number')
         dates = request.POST.getlist('chk_date')
         banks = request.POST.getlist('chk_bank')
+        statuses = request.POST.getlist('chk_status')
+        raw_status = statuses[idx] if idx < len(statuses) else ''
         checks.append({
             'amount': value,
             'number': numbers[idx] if idx < len(numbers) else '',
             'due_on': parse_jalali(dates[idx]) if idx < len(dates) else None,
             'bank': banks[idx] if idx < len(banks) else '',
-            'status': 'در جریان',
+            'status': raw_status if raw_status in CHECK_STATES else 'در جریان',
         })
     return lines, payments, checks
 
@@ -666,6 +669,24 @@ def request_review(request, pk):
     if req.incomplete or req.status != 'pending':
         messages.error(request, 'درخواست ناقص یا بررسی‌شده قابل تایید نیست.')
         return redirect('request_detail', pk=pk)
+    check_sale = is_check_sale(req)
+    try:
+        invoice = _approve_request(request, req, note, check_sale)
+    except KeshttaminError as exc:
+        messages.error(
+            request,
+            f'اعلام فروش تایید نشد. ارسال اطلاعات این فروش چکی به کشت‌تأمین ناموفق بود. {exc}',
+        )
+        return redirect('request_detail', pk=pk)
+    if invoice is None:
+        return redirect('request_detail', pk=pk)
+    sent = ' اطلاعات این فروش چکی به کشت‌تأمین ارسال شد.' if check_sale else ''
+    messages.success(request, f'فروش تایید شد و فاکتور {invoice.number} در داشبورد نشست.{sent}')
+    return redirect('request_detail', pk=pk)
+
+
+def _approve_request(request, req, note, check_sale):
+    """فاکتور را می‌سازد و برای فروش چکی، قبل از تایید به کشت‌تأمین می‌فرستد."""
     with transaction.atomic():
         customer = Customer.objects.filter(name=req.customer_name).first()
         created = customer is None
@@ -709,7 +730,7 @@ def request_review(request, pk):
                 invoice = None
         if invoice is None:
             messages.error(request, 'شماره فاکتور ساخته نشد. یک بار دیگر تایید کنید.')
-            return redirect('request_detail', pk=pk)
+            return None
         for line in req.line_list:
             InvoiceLine.objects.create(
                 invoice=invoice, product_name=line.product_name, qty=line.qty,
@@ -723,15 +744,18 @@ def request_review(request, pk):
         for chk in req.check_list:
             Check.objects.create(
                 invoice=invoice, number=chk.number, amount=chk.amount,
-                due_on=chk.due_on or req.sold_on, status=chk.status, note=chk.bank,
+                due_on=chk.due_on or req.sold_on,
+                status=canonical_check_status(getattr(chk, 'status', '')),
+                note=chk.bank,
             )
-        req.status = 'approved'
         req.review_note = note
         req.reviewed_by = request.user
         req.reviewed_at = timezone.now()
         req.invoice = invoice
+        if check_sale:
+            send_check_sale(sale_payload(req, invoice))
+        req.status = 'approved'
         req.save()
         take_snapshot('requests')
         take_snapshot('customers')
-    messages.success(request, f'فروش تایید شد و فاکتور {invoice.number} در داشبورد نشست.')
-    return redirect('request_detail', pk=pk)
+    return invoice

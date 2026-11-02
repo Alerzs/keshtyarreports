@@ -40,7 +40,7 @@
 </section>
 <section class="mt-4 grid gap-4 md:grid-cols-2">
   <article class="card p-5"><h3 class="mb-2 font-extrabold">پرداخت‌ها</h3>{% for pay in req.payment_list %}<p class="text-sm">{{ pay.method }} · {{ pay.amount|toman }} · {{ pay.paid_on|jdate }}</p>{% empty %}<p class="text-sm text-muted">پرداختی ثبت نشده.</p>{% endfor %}</article>
-  <article class="card p-5"><h3 class="mb-2 font-extrabold">چک‌ها</h3>{% for chk in req.check_list %}<p class="text-sm">{{ chk.number|default:"—" }} · {{ chk.bank }} · {{ chk.amount|toman }} · {{ chk.due_on|jdate }}</p>{% empty %}<p class="text-sm text-muted">چکی نیست.</p>{% endfor %}</article>
+  <article class="card p-5"><h3 class="mb-2 font-extrabold">چک‌ها</h3>{% for chk in req.check_list %}<p class="text-sm">{{ chk.number|default:"—" }} · {{ chk.bank }} · {{ chk.amount|toman }} · {{ chk.due_on|jdate }} · <span class="pill {{ chk.status|check_tone }}">{{ chk.status }}</span></p>{% empty %}<p class="text-sm text-muted">چکی نیست.</p>{% endfor %}</article>
 </section>
 <section class="card mt-4 p-5">
   <h3 class="mb-2 font-extrabold">مدارک آپلودشده</h3>

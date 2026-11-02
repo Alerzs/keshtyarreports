@@ -4,6 +4,8 @@ from decimal import Decimal
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+from .credit import CHECK_STATES, canonical_check_status
+
 from .perms import has_finance, role_of
 
 
@@ -196,13 +198,25 @@ class Check(models.Model):
     number = models.CharField('شماره چک', max_length=40, blank=True)
     amount = models.BigIntegerField('مبلغ')
     due_on = models.DateField('سررسید')
-    status = models.CharField('وضعیت', max_length=40, default='در جریان')
+    status = models.CharField(
+        'وضعیت', max_length=40, choices=[(state, state) for state in CHECK_STATES], default='در جریان',
+    )
     image = models.FileField('تصویر', upload_to='checks/%Y/%m/', blank=True)
     note = models.CharField('یادداشت', max_length=240, blank=True)
 
     class Meta:
         verbose_name = 'چک'
         verbose_name_plural = 'چک‌ها'
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(status__in=CHECK_STATES),
+                name='panel_check_status_valid',
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        self.status = canonical_check_status(self.status)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.number or f'چک {self.pk}'

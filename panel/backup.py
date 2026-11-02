@@ -1,6 +1,7 @@
 """پشتیبان بعد از هر نوشتن. بازگردانی، وضعیت فعلی را هم قبل از جایگزینی نگه می‌دارد."""
 from django.db import transaction
 
+from .credit import canonical_check_status
 from .models import Customer, Operator, SaleRequest, Snapshot
 from .perms import FINANCE_GROUP, set_membership
 
@@ -173,6 +174,15 @@ def _restore_customers(payload):
         )
 
 
+def _canonical_checks(rows):
+    cleaned = []
+    for item in rows:
+        if isinstance(item, dict):
+            item = {**item, 'status': canonical_check_status(item.get('status'))}
+        cleaned.append(item)
+    return cleaned
+
+
 def _restore_requests(payload):
     SaleRequest.objects.all().delete()
     by_name = {u.username: u for u in Operator.objects.all()}
@@ -200,7 +210,7 @@ def _restore_requests(payload):
             review_note=row.get('review_note', ''),
             lines=row.get('lines') or [],
             payments=row.get('payments') or [],
-            checks=row.get('checks') or [],
+            checks=_canonical_checks(row.get('checks') or []),
         )
 
 

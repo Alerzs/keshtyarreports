@@ -33,14 +33,23 @@ def check_is_cleared(status):
     return compact.startswith('وصول')
 
 
+def cash_of(invoice):
+    """واریز نقد و کارت؛ چک در این جمع نیست."""
+    return sum(int(p.amount or 0) for p in invoice.payments.all())
+
+
+def collected_of(invoice):
+    """جمع چک‌هایی که وصول شده‌اند، با هر املای وضعیت."""
+    return sum(int(c.amount or 0) for c in invoice.checks.all() if check_is_cleared(c.status))
+
+
 def received_of(invoice):
-    cash = sum(p.amount for p in invoice.payments.all())
-    cleared = sum(c.amount for c in invoice.checks.all() if c.status == 'وصول‌شده')
-    return cash + cleared
+    """نقد و کارت، به‌علاوه هر چکی که وصول شده."""
+    return cash_of(invoice) + collected_of(invoice)
 
 
 def outstanding_of(invoice):
-    return max(0, invoice.sale_amount - received_of(invoice))
+    return max(0, int(invoice.sale_amount) - received_of(invoice))
 
 
 def cash_due_of(invoice):
@@ -159,7 +168,9 @@ def build_dashboard(user, range_key='all', person='', month='all', team_month='a
 
     total_sales = sum(i.sale_amount for i in invoices)
     total_cost = sum(i.cost_amount for i in invoices)
+    cash_received = sum(cash_of(i) for i in invoices)
     received = sum(received_of(i) for i in invoices)
+    collected = sum(collected_of(i) for i in invoices)
     outstanding = sum(outstanding_of(i) for i in invoices)
     check_due = sum(
         int(chk.amount or 0)
@@ -173,12 +184,13 @@ def build_dashboard(user, range_key='all', person='', month='all', team_month='a
 
     kpis = [
         {'key': 'total', 'label': 'فروش کل', 'value': total_sales, 'note': 'کل مبلغ فاکتورهای ثبت شده', 'tone': 'c1'},
-        {'key': 'received', 'label': 'کل دریافتی (نقد/کارت)', 'value': received, 'note': 'ورودی واقعی به حساب‌ها', 'tone': 'c4'},
-        {'key': 'outstanding', 'label': 'مطالبات (بدهی مشتریان)', 'value': outstanding, 'note': 'پولی که هنوز وصول نشده', 'tone': 'c3'},
-        {'key': 'profit', 'label': 'سود کل ناخالص', 'value': total_sales - total_cost, 'note': 'مابه‌التفاوت فروش و خرید', 'tone': 'c2'},
+        {'key': 'received', 'label': 'دریافتی نقدی', 'value': cash_received, 'note': 'ورودی واقعی به حساب‌ها', 'tone': 'c2'},
+        {'key': 'collected', 'label': 'چک‌های وصول‌شده', 'value': collected, 'note': 'چک‌هایی که پولشان به حساب نشسته', 'tone': 'c2'},
+        {'key': 'outstanding', 'label': 'مطالبات (نقدی و چکی)', 'value': outstanding, 'note': 'پولی که هنوز وصول نشده', 'tone': 'c3'},
+        {'key': 'checks', 'label': 'مانده‌های چکی', 'value': check_due, 'note': 'چک‌هایی که هنوز وصول نشده', 'tone': 'c3'},
+        {'key': 'profit', 'label': 'سود کل ناخالص', 'value': total_sales - total_cost, 'note': 'مابه‌التفاوت فروش و خرید', 'tone': 'c4'},
         {'key': 'count', 'label': 'تعداد فاکتورها', 'value': len(invoices), 'note': 'مجموع سفارشات موفق', 'tone': 'c6', 'plain': True},
-        {'key': 'checks', 'label': 'مانده‌های چکی', 'value': check_due, 'note': 'چک‌هایی که هنوز وصول نشده', 'tone': 'c5'},
-        {'key': 'loyal', 'label': 'تعداد مشتریان وفادار', 'value': loyal_count, 'note': 'مشتری با بیش از یک فاکتور', 'tone': 'c7', 'plain': True},
+        {'key': 'loyal', 'label': 'تعداد مشتریان وفادار', 'value': loyal_count, 'note': 'مشتری با بیش از یک فاکتور', 'tone': 'c5', 'plain': True},
     ]
 
     by_day = defaultdict(lambda: {'sales': 0, 'profit': 0})
@@ -747,6 +759,7 @@ def _kpi_details(invoices, repeat_ids):
     """ردیف‌هایی که جمع‌شان همان شاخص‌های بالای داشبورد است."""
     invoice_rows = []
     receipt_rows = []
+    collected_rows = []
     check_rows = []
     loyal = {}
     for inv in invoices:
@@ -784,7 +797,7 @@ def _kpi_details(invoices, repeat_ids):
             person['sale'] += int(inv.sale_amount)
             person['outstanding'] += debt
         for pay in inv.payments.all():
-            receipt_rows.append({
+            pay_row = {
                 'id': inv.pk,
                 'number': inv.number,
                 'customer': inv.customer.name,
@@ -793,21 +806,22 @@ def _kpi_details(invoices, repeat_ids):
                 'date': format_jalali(pay.paid_on),
                 'amount': int(pay.amount or 0),
                 '_sort': _kpi_stamp(pay.paid_on),
-            })
+            }
+            receipt_rows.append(pay_row)
         for chk in inv.checks.all():
             amount = int(chk.amount or 0)
-            if chk.status == 'وصول‌شده':
-                receipt_rows.append({
+            if check_is_cleared(chk.status):
+                collected_rows.append({
                     'id': inv.pk,
                     'number': inv.number,
                     'customer': inv.customer.name,
                     'customerId': inv.customer_id,
-                    'method': 'چک وصول‌شده',
+                    'checkNumber': chk.number or '—',
+                    'status': chk.status or 'وصول‌شده',
                     'date': format_jalali(chk.due_on),
                     'amount': amount,
                     '_sort': _kpi_stamp(chk.due_on),
                 })
-            if check_is_cleared(chk.status):
                 continue
             check_rows.append({
                 'id': inv.pk,
@@ -822,17 +836,21 @@ def _kpi_details(invoices, repeat_ids):
             })
     invoice_rows.sort(key=lambda row: row['_sort'], reverse=True)
     receipt_rows.sort(key=lambda row: (row['_sort'], row['amount']), reverse=True)
+    collected_rows.sort(key=lambda row: (row['_sort'], row['amount']), reverse=True)
     check_rows.sort(key=lambda row: (row['amount'], row['_sort']), reverse=True)
     customer_rows = sorted(loyal.values(), key=lambda row: row['sale'], reverse=True)
     for row in invoice_rows:
         row.pop('_sort', None)
     for row in receipt_rows:
         row.pop('_sort', None)
+    for row in collected_rows:
+        row.pop('_sort', None)
     for row in check_rows:
         row.pop('_sort', None)
     return {
         'invoices': invoice_rows,
         'receipts': receipt_rows,
+        'collected': collected_rows,
         'checks': check_rows,
         'customers': customer_rows,
     }

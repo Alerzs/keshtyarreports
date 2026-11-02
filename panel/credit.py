@@ -82,6 +82,21 @@ PAY_METHODS = ['واریزی به حساب یوسف', 'کارت به کارت', 
 CHECK_STATES = ['در جریان', 'وصول‌شده', 'برگشتی', 'سررسید گذشته']
 
 
+def canonical_check_status(status):
+    """هر املای نزدیک را به یکی از CHECK_STATES برمی‌گرداند."""
+    text = (status or '').strip()
+    if text in CHECK_STATES:
+        return text
+    compact = text.replace('\u200c', '').replace(' ', '')
+    if compact.startswith('وصول'):
+        return 'وصول‌شده'
+    if 'برگشت' in compact:
+        return 'برگشتی'
+    if compact.startswith('سررسید'):
+        return 'سررسید گذشته'
+    return 'در جریان'
+
+
 def check_status_tone(status):
     """رنگ برچسب وضعیت چک. وصول (با هر املایی) سبز است و برگشتی قرمز."""
     compact = (status or '').replace('\u200c', '').replace(' ', '')

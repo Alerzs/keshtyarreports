@@ -1,0 +1,283 @@
+ارسال فروش چکی از کشت‌یار به کشت‌تأمین
+=====================================
+
+این فایل قرارداد API است که سایت keshttamin.ir باید پیاده کند.
+کشت‌یار همین قرارداد را صدا می‌زند. تا وقتی این آدرس پاسخ موفق ندهد،
+اعلام فروش چکی در کشت‌یار تایید نمی‌شود و فاکتورش هم ثبت نمی‌ماند.
+
+کی ارسال می‌شود
+--------------
+بعد از اینکه مدیر در بخش «اعلام فروش» دکمه تایید را بزند،
+اگر فروش قسطی باشد یا حداقل یک چک داشته باشد، کشت‌یار کل اطلاعات
+آن فروش را با POST می‌فرستد. فروش نقدیِ بدون چک ارسال نمی‌شود و
+همان لحظه تایید می‌شود.
+
+تایید اعلام فروش فقط بعد از پاسخ موفق انجام می‌شود.
+اگر ارتباط قطع شود، کد وضعیت غیر از ۲xx باشد، بدنه JSON نباشد،
+یا فیلد ok برابر true نباشد، وضعیت درخواست «در انتظار تایید» می‌ماند
+و فاکتور، مشتری تازه و چک‌های همان تلاش در کشت‌یار ذخیره نمی‌شوند.
+
+اگر کشت‌تأمین فروش را ذخیره کرده باشد ولی پاسخ به کشت‌یار نرسد،
+مدیر دوباره تایید می‌کند. همان sale_request_id دوباره می‌آید.
+پیاده‌سازی باید با sale_request_id تکراری را دوباره نسازد و
+باز هم پاسخ موفق بدهد. شماره فاکتور در تلاش بعدی می‌تواند عوض شود؛
+رکورد را با sale_request_id به‌روز کنید.
+
+
+آدرس، متد و هدرها
+-----------------
+متد: POST
+آدرس: https://keshttamin.ir/api/keshtyar/check-sales
+
+هدرها:
+  Content-Type: application/json; charset=utf-8
+  Accept: application/json
+  X-Api-Key: <همان کلید مشترک>
+  User-Agent: Keshtyar/check-sale
+
+بدنه، JSON با کدگذاری UTF-8 است (متن فارسی به صورت خود حروف فارسی، نه \u).
+ریدایرکت پذیرفته نیست. پاسخ باید خودِ همین آدرس و بدون جابه‌جایی به صفحه دیگر باشد.
+مهلت انتظار کشت‌یار: ۵ ثانیه برای وصل شدن و ۲۰ ثانیه برای خواندن پاسخ.
+این مهلت با متغیر محیطی KESHTTAMIN_TIMEOUT (ثانیه) قابل تغییر است.
+
+آدرس در کد کشت‌یار ثابت است و از متغیر محیطی خوانده نمی‌شود:
+https://keshttamin.ir/api/keshtyar/check-sales
+
+
+کلید مشترک
+----------
+یک رشته محرمانه بسازید و در هر دو طرف یکی باشد.
+
+در کشت‌یار، داخل فایل .env:
+  KESHTTAMIN_API_KEY=همان-رشته
+
+در کشت‌تأمین همین مقدار را با هدر X-Api-Key مقایسه کنید.
+اگر خالی یا نادرست بود، وضعیت 401 و بدنه {"ok": false, "error": "..."} برگردانید.
+بدون این کلید، کشت‌یار اصلاً درخواست را نمی‌فرستد و فروش چکی تایید نمی‌شود.
+
+
+پاسخ موفق
+---------
+وضعیت HTTP: 200 (یا هر کد ۲xx)
+بدنه:
+  {"ok": true}
+
+فیلد ok باید دقیقاً بولین true باشد. رشته "true" قبول نیست.
+می‌توانید شناسه داخلی خودتان را هم بدهید:
+  {"ok": true, "id": 15}
+
+
+پاسخ ناموفق
+-----------
+وضعیت 4xx یا 5xx، یا وضعیت ۲۰۰ با ok غیر از true.
+بدنه پیشنهادی:
+  {"ok": false, "error": "دلیل کوتاه فارسی یا انگلیسی"}
+
+متن error تا ۱۸۰ حرف در پیام مدیر کشت‌یار نشان داده می‌شود.
+
+
+قرارداد بدنه ارسالی
+-------------------
+مبالغ عدد صحیح و به تومان هستند.
+تاریخ‌های date به میلادی و به شکل YYYY-MM-DD هستند.
+فیلدهای jalali تاریخ جلالی با ارقام فارسی و شکل YYYY/MM/DD هستند، مثل ۱۴۰۵/۰۷/۳۰.
+reviewed_at تاریخ‌وزمان ISO-8601 است و منطقه زمانی دارد.
+فایل‌های پیوست فرستاده نمی‌شوند؛ فقط نام و زمان بارگذاری‌شان در files است.
+
+شناسه یکتا برای تکرار ارسال: sale_request_id
+
+فیلدها:
+
+source                همیشه "keshtyar"
+event                 همیشه "check_sale_approved"
+sale_request_id       عدد؛ شناسه اعلام فروش در کشت‌یار
+sold_on               تاریخ فروش، میلادی
+sold_on_jalali        تاریخ فروش، جلالی
+settlement            "قسطی" یا در حالت استثنا "نقدی" (اگر فروش نقدی چک داشته باشد)
+note                  یادداشت فروشنده
+review_note           یادداشت مدیر هنگام تایید
+reviewed_at           زمان تایید
+seller                فروشنده، یا null
+seller.id             عدد
+seller.username       نام کاربری
+seller.full_name      نام
+seller.report_name    نام نمایشی در گزارش
+reviewer              مدیر تاییدکننده، یا null؛ همان شکل seller
+customer.id           شناسه مشتری در کشت‌یار
+customer.name         نام مشتری
+customer.phone        موبایل، ۱۱ رقم
+customer.city         شهر
+customer.address      آدرس
+customer.customer_type  یکی از: فروشگاه‌دار، کشاورز، گلخانه‌دار
+customer.credit       شیء اعتبارسنجی. کلیدها ممکن است خالی باشند:
+                      fullName, fatherName, nationalId, birthDate,
+                      landline, altPhone, emergency, postalCode, province,
+                      residence, mapLink, businessName, businessRole,
+                      businessYears, licenseNo, farmArea, cropTypes,
+                      mainBank, accountNo, iban, creditRank, bouncedCheck,
+                      bouncedCount, bouncedAmount, bankDebt, loanInstall,
+                      inquiryDate, disputeHistory, historyNote
+invoice.id            شناسه فاکتور
+invoice.number        شماره فاکتور، رشته عددی پنج‌رقمی مثل "00015"
+invoice.status        برای فروش قسطی معمولاً "در حال پیگیری"
+invoice.settlement    همان نوع تسویه
+invoice.sold_on
+invoice.sold_on_jalali
+invoice.purchase_amount   جمع خرید
+invoice.sale_amount       جمع فروش
+invoice.cost_amount       جمع بهای تمام‌شده
+invoice.note
+lines[]               اقلام فاکتور
+lines[].id            شناسه قلم
+lines[].product_name
+lines[].qty           تعداد، عدد اعشاری
+lines[].unit_price    قیمت فروش هر واحد، تومان
+lines[].unit_cost     قیمت خرید هر واحد، تومان
+payments[]            پرداخت‌های نقدی / کارت / شبا، غیر از خود چک‌ها
+payments[].id
+payments[].amount
+payments[].method     یکی از: واریزی به حساب یوسف، کارت به کارت، شبا
+payments[].paid_on
+payments[].paid_on_jalali
+payments[].note
+checks[]              چک‌های همین فروش
+checks[].id
+checks[].number       شماره چک؛ اختیاری. می‌تواند خالی باشد یا اصلاً نیاید.
+                      تکراری بودن این شماره، داخل همین درخواست یا نسبت به
+                      فروش‌های قبلی، خطا نیست و نباید باعث رد شدن ارسال شود.
+                      شماره را همان‌طور که آمده ذخیره کنید، حتی اگر خالی یا تکراری باشد.
+checks[].amount       مبلغ، تومان
+checks[].bank         نام بانک
+checks[].status       یکی از: در جریان، وصول‌شده، برگشتی، سررسید گذشته
+checks[].due_on       سررسید میلادی
+checks[].due_on_jalali
+guarantees[]          تضامین
+guarantees[].type     مثل: چک صیادی، سفته، ضامن معتبر، وثیقه ملکی،
+                      ضمانت‌نامه بانکی، قرارداد رسمی، سایر
+guarantees[].holder   نام دارنده
+guarantees[].amount   مبلغ، تومان
+references[]          معرف‌ها
+references[].name
+references[].relation
+references[].phone
+docs[]                لیست رشته‌ای نام مدارکی که تیک خورده‌اند
+warnings[]            لیست رشته‌ای هشدارهای فرم
+files[]               مدرک‌های بارگذاری‌شده، بدون محتوای فایل
+files[].name
+files[].uploaded_at
+
+
+نمونه درخواست
+-------------
+POST https://keshttamin.ir/api/keshtyar/check-sales
+Content-Type: application/json; charset=utf-8
+Accept: application/json
+X-Api-Key: یک-کلید-مشترک
+User-Agent: Keshtyar/check-sale
+
+{
+  "source": "keshtyar",
+  "event": "check_sale_approved",
+  "sale_request_id": 42,
+  "sold_on": "2026-10-22",
+  "sold_on_jalali": "۱۴۰۵/۰۷/۳۰",
+  "settlement": "قسطی",
+  "note": "تحویل درب گلخانه",
+  "review_note": "مدارک کامل بود",
+  "reviewed_at": "2026-11-02T11:30:00+00:00",
+  "seller": {
+    "id": 3,
+    "username": "ali",
+    "full_name": "علی محمدی",
+    "report_name": "علی محمدی"
+  },
+  "reviewer": {
+    "id": 1,
+    "username": "boss",
+    "full_name": "مدیر فروش",
+    "report_name": "مدیر فروش"
+  },
+  "customer": {
+    "id": 18,
+    "name": "رضا کریمی",
+    "phone": "09121234567",
+    "city": "کرمان",
+    "address": "رفسنجان، خیابان مطهری",
+    "customer_type": "کشاورز",
+    "credit": {
+      "fatherName": "حسین",
+      "nationalId": "0012345678",
+      "mainBank": "ملت",
+      "bouncedCheck": "ندارد"
+    }
+  },
+  "invoice": {
+    "id": 90,
+    "number": "00015",
+    "status": "در حال پیگیری",
+    "settlement": "قسطی",
+    "sold_on": "2026-10-22",
+    "sold_on_jalali": "۱۴۰۵/۰۷/۳۰",
+    "purchase_amount": 800000,
+    "sale_amount": 2000000,
+    "cost_amount": 800000,
+    "note": "تحویل درب گلخانه"
+  },
+  "lines": [
+    {
+      "id": 120,
+      "product_name": "کود",
+      "qty": 2,
+      "unit_price": 1000000,
+      "unit_cost": 400000
+    }
+  ],
+  "payments": [
+    {
+      "id": 70,
+      "amount": 500000,
+      "method": "شبا",
+      "paid_on": "2026-10-22",
+      "paid_on_jalali": "۱۴۰۵/۰۷/۳۰",
+      "note": "پیش‌پرداخت"
+    }
+  ],
+  "checks": [
+    {
+      "id": 33,
+      "number": "123456",
+      "amount": 1500000,
+      "bank": "ملت",
+      "status": "در جریان",
+      "due_on": "2026-12-01",
+      "due_on_jalali": "۱۴۰۵/۰۹/۱۰"
+    }
+  ],
+  "guarantees": [
+    {"type": "چک صیادی", "holder": "رضا کریمی", "amount": 1500000}
+  ],
+  "references": [
+    {"name": "حسن رضایی", "relation": "همکار صنفی", "phone": "09120000000"}
+  ],
+  "docs": ["کپی کارت ملی", "نمونه چک"],
+  "warnings": [],
+  "files": [
+    {"name": "kart-melli.jpg", "uploaded_at": "2026-10-22T08:00:00+00:00"}
+  ]
+}
+
+
+نمونه پاسخ موفق
+---------------
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+
+{"ok": true, "id": 15}
+
+
+نمونه پاسخ ناموفق
+-----------------
+HTTP/1.1 422 Unprocessable Entity
+Content-Type: application/json; charset=utf-8
+
+{"ok": false, "error": "بدنه درخواست ناقص است"}

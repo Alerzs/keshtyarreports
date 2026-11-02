@@ -6,6 +6,7 @@ from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
+from panel.credit import canonical_check_status
 from panel.jalali import JALALI_MONTHS, jalali_to_gregorian, parse_jalali, to_en_digits
 from panel.models import (
     Check, Customer, Invoice, InvoiceLine, Operator, Payment,
@@ -259,7 +260,7 @@ class Command(BaseCommand):
                 invoice=invoices[str(_money(row[0]))],
                 amount=_money(row[1]),
                 due_on=due_on,
-                status=_text(row[3])[:40] or 'در انتظار',
+                status=canonical_check_status(_text(row[3])),
                 note=_text(row[4])[:240],
             )
 

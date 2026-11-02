@@ -80,7 +80,7 @@
       </a>
       {% endif %}
       {% if 'edit' in crm_pages %}
-      <a href="{% url 'edit' %}" class="nav-link {% if name == 'edit' or name == 'edit_customer' or name == 'edit_invoice' or name == 'edit_payment' or name == 'edit_check' %}is-active{% endif %}">
+      <a href="{% url 'edit' %}" class="nav-link {% if name == 'edit' or name == 'edit_customer' or name == 'edit_invoice' or name == 'edit_invoice_delete' %}is-active{% endif %}">
         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
         ویرایش
       </a>

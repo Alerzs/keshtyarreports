@@ -1,6 +1,124 @@
 {% extends "panel/base.html" %}
 {% load panel_tags %}
 {% block title %}ویرایش اطلاعات | کشت‌یار{% endblock %}
+{% block head %}
+<style>
+  #editPage { display: grid; gap: 1.25rem; align-items: start; }
+  .edit-nav { display: grid; grid-template-columns: 1fr 1fr; gap: .35rem; }
+  .edit-nav a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    padding: .8rem .9rem;
+    font-size: .875rem;
+    font-weight: 800;
+    color: #64748b;
+    text-align: center;
+  }
+  .edit-nav a + a { margin-top: 0; }
+  .edit-nav a.is-on { background: #f0f9ff; color: #0e7490; }
+  .edit-nav a:not(.is-on):hover { background: #f8fafc; color: #0f172a; }
+  @media (min-width: 1024px) {
+    #editPage { grid-template-columns: 220px minmax(0, 1fr); }
+    .edit-nav { grid-template-columns: 1fr; }
+    .edit-nav a { justify-content: flex-start; }
+    .edit-nav a + a { margin-top: .25rem; }
+  }
+  .edit-section {
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    background: #fff;
+    padding: 1rem 1rem 1.1rem;
+    box-shadow: 0 10px 30px -18px rgba(15, 23, 42, .45);
+  }
+  @media (min-width: 640px) {
+    .edit-section { padding: 1.15rem 1.25rem 1.25rem; }
+  }
+  #editPage > div > .edit-section + .edit-section,
+  #editPage > div > .edit-section + .edit-stack { margin-top: 1rem; }
+  .edit-stack { display: grid; gap: 1rem; }
+  .edit-head .btn { flex-shrink: 0; }
+  .edit-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-bottom: .9rem;
+  }
+  .edit-head h2, .edit-head h3 { font-weight: 800; }
+  .edit-head h2 { font-size: 1.15rem; }
+  .edit-head h3 { font-size: 1rem; }
+  .edit-head p { margin-top: .2rem; font-size: 12px; font-weight: 600; color: #64748b; line-height: 1.7; }
+  #invoiceForm .label, #customerForm .label { margin-bottom: .3rem; font-size: 12px; color: #64748b; }
+  #invoiceForm .field, #customerForm .field { padding-top: .6rem; padding-bottom: .6rem; background: #fff; }
+  .edit-grid, .line-grid, .pair-grid, .finder { display: grid; gap: .75rem; }
+  .finder { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+  @media (min-width: 760px) {
+    .edit-grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .edit-grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .span-all { grid-column: 1 / -1; }
+    .edit-save .btn,
+    .edit-save form { width: auto; }
+  }
+  @media (min-width: 980px) {
+    .line-grid { grid-template-columns: minmax(0, 1.6fr) minmax(5rem, .55fr) minmax(0, 1fr) minmax(0, 1fr); align-items: end; }
+  }
+  @media (min-width: 1180px) {
+    .pair-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  }
+  .row-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #f8fafc;
+    padding: .85rem;
+  }
+  .row-card + .row-card { margin-top: .65rem; }
+  .row-top { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .7rem; }
+  .invoice-lock {
+    display: grid;
+    gap: .65rem;
+    margin-bottom: .9rem;
+  }
+  @media (min-width: 760px) {
+    .invoice-lock { grid-template-columns: 1fr 1fr; }
+  }
+  .invoice-lock div {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #f8fafc;
+    padding: .7rem .85rem;
+  }
+  .invoice-lock span { display: block; margin-bottom: .2rem; font-size: 12px; font-weight: 700; color: #64748b; }
+  .invoice-lock b { font-size: .95rem; }
+  .commission-row {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #f8fafc;
+    padding: .75rem .9rem;
+    font-size: .875rem;
+    font-weight: 800;
+  }
+  .edit-save {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #fff;
+    padding: .85rem;
+    margin-top: 1rem;
+  }
+  .edit-save p { flex: 1; min-width: 12rem; font-size: 12px; font-weight: 700; color: #64748b; }
+  .edit-save .btn,
+  .edit-save form { width: 100%; }
+</style>
+{% endblock %}
 {% block content %}
 <header class="mb-5 flex flex-wrap items-center justify-between gap-3">
   <h1 class="flex items-center gap-3 text-[19px] font-extrabold text-primary-hover">
@@ -9,75 +127,296 @@
   </h1>
   <a class="btn btn-outline" href="{% url 'customers' %}">دایرکتوری مشتریان</a>
 </header>
-<div class="grid gap-5 lg:grid-cols-[240px_1fr]">
-  <aside class="card h-max p-3">
-    <a href="?tab=customers" class="mb-1 flex items-center gap-2 rounded-xl px-3 py-3 text-sm font-bold {% if tab == 'customers' %}bg-primary-soft text-primary{% else %}text-muted hover:bg-canvas{% endif %}">ویرایش مشتریان</a>
-    <a href="?tab=invoices" class="mb-1 flex items-center gap-2 rounded-xl px-3 py-3 text-sm font-bold {% if tab == 'invoices' %}bg-primary-soft text-primary{% else %}text-muted hover:bg-canvas{% endif %}">ویرایش فاکتورها</a>
-    <a href="?tab=payments" class="mb-1 flex items-center gap-2 rounded-xl px-3 py-3 text-sm font-bold {% if tab == 'payments' %}bg-primary-soft text-primary{% else %}text-muted hover:bg-canvas{% endif %}">ویرایش پرداختی‌ها</a>
-    <a href="?tab=checks" class="flex items-center gap-2 rounded-xl px-3 py-3 text-sm font-bold {% if tab == 'checks' %}bg-primary-soft text-primary{% else %}text-muted hover:bg-canvas{% endif %}">ویرایش چک‌ها</a>
+<div id="editPage">
+  <aside class="card edit-nav h-max p-2">
+    <a href="?tab=customers" class="{% if tab == 'customers' %}is-on{% endif %}">ویرایش مشتریان</a>
+    <a href="?tab=invoices" class="{% if tab == 'invoices' %}is-on{% endif %}">ویرایش فاکتورها</a>
   </aside>
-  <main class="card p-6 md:p-8">
+  <div>
     {% if tab == 'customers' %}
-    <h2 class="text-xl font-extrabold">اطلاعات هویتی و پروفایل مشتری</h2>
-    <p class="mb-5 mt-1 text-sm font-semibold text-muted">کاربر مورد نظر را پیدا کنید و اطلاعات تماس را اصلاح کنید. نام، شناسه‌ی یکتاست.</p>
-    <form method="get" class="mb-4 flex gap-2"><input type="hidden" name="tab" value="customers"><input name="q" value="{{ q }}" class="field" placeholder="نام مشتری را تایپ کنید..."><button class="btn btn-outline" type="submit">جستجو</button></form>
-    <div class="mb-5 flex flex-wrap gap-2">{% for c in customers %}<a class="pill border border-sky-200 bg-primary-soft text-sky-800 {% if selected_customer.pk == c.pk %}ring-2 ring-primary{% endif %}" href="?tab=customers&customer={{ c.pk }}">{{ c.name }}</a>{% endfor %}</div>
+    <section class="edit-section">
+      <div class="edit-head">
+        <div>
+          <h2>اطلاعات هویتی و پروفایل مشتری</h2>
+          <p>نام، شناسه‌ی یکتاست. تماس، دسته و آدرس را همین‌جا اصلاح کنید.</p>
+        </div>
+      </div>
+      <form method="get" class="finder">
+        <input type="hidden" name="tab" value="customers">
+        <div>
+          <label class="label" for="customerSearch">جستجوی مشتری</label>
+          <input id="customerSearch" name="q" value="{{ q }}" class="field" placeholder="نام مشتری را تایپ کنید...">
+        </div>
+        <button class="btn btn-outline" type="submit">جستجو</button>
+      </form>
+      {% if customers %}
+      <div class="mt-4">
+        <label class="label" for="customerPick">مشتری</label>
+        <select id="customerPick" class="field" aria-label="انتخاب مشتری" onchange="if (this.value) location.href = this.value">
+          <option value="" {% if not selected_customer %}selected{% endif %} disabled>یک مشتری را انتخاب کنید</option>
+          {% if selected_customer %}
+          <option value="?tab=customers&customer={{ selected_customer.pk }}{% if q %}&q={{ q|urlencode }}{% endif %}" selected>{{ selected_customer.name }}</option>
+          {% endif %}
+          {% for c in customers %}
+            {% if not selected_customer or c.pk != selected_customer.pk %}
+            <option value="?tab=customers&customer={{ c.pk }}{% if q %}&q={{ q|urlencode }}{% endif %}">{{ c.name }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      {% else %}
+      <p class="mt-4 text-sm font-semibold text-muted">مشتری‌ای با این عبارت پیدا نشد.</p>
+      {% endif %}
+    </section>
     {% if selected_customer %}
-    <form method="post" action="{% url 'edit_customer' %}" class="grid gap-4 md:grid-cols-2">{% csrf_token %}
+    <form id="customerForm" method="post" action="{% url 'edit_customer' %}" class="edit-section">{% csrf_token %}
       <input type="hidden" name="id" value="{{ selected_customer.pk }}">
-      <div><label class="label">نام ثبت‌شده</label><input class="field" value="{{ selected_customer.name }}" disabled></div>
-      <div><label class="label">شماره تماس</label><input name="phone" value="{{ selected_customer.phone }}" class="field" dir="ltr"></div>
-      <div><label class="label">دسته‌بندی</label><input name="customer_type" value="{{ selected_customer.customer_type }}" class="field"></div>
-      <div><label class="label">استان / شهر</label><input name="city" value="{{ selected_customer.city }}" class="field"></div>
-      <div class="md:col-span-2"><label class="label">آدرس</label><textarea name="address" class="field" rows="3">{{ selected_customer.address }}</textarea></div>
-      <div><button class="btn btn-green" type="submit">ذخیره تغییرات مشتری</button></div>
+      <div class="edit-grid cols-2">
+        <div><label class="label">نام ثبت‌شده</label><input class="field" value="{{ selected_customer.name }}" disabled></div>
+        <div><label class="label">شماره تماس</label><input name="phone" value="{{ selected_customer.phone }}" class="field" dir="ltr"></div>
+        <div><label class="label">دسته‌بندی</label><input name="customer_type" value="{{ selected_customer.customer_type }}" class="field"></div>
+        <div><label class="label">استان / شهر</label><input name="city" value="{{ selected_customer.city }}" class="field"></div>
+        <div class="span-all"><label class="label">آدرس</label><textarea name="address" class="field" rows="3">{{ selected_customer.address }}</textarea></div>
+      </div>
+      <div class="edit-save">
+        <p>نام مشتری ثابت می‌ماند و فقط اطلاعات تماس ذخیره می‌شود.</p>
+        <button class="btn btn-green" type="submit">ذخیره تغییرات مشتری</button>
+      </div>
     </form>
     {% endif %}
     {% elif tab == 'invoices' %}
-    <h2 class="text-xl font-extrabold">مدیریت فاکتورهای فروش</h2>
-    <p class="mb-5 mt-1 text-sm text-muted">وضعیت تسویه و توضیحات فاکتور را اصلاح کنید.</p>
-    <form method="get" class="mb-4 flex gap-2"><input type="hidden" name="tab" value="invoices"><input name="q" value="{{ q }}" class="field" placeholder="شماره فاکتور یا نام مشتری"><button class="btn btn-outline">جستجو</button></form>
-    <div class="mb-5 flex flex-wrap gap-2">{% for inv in invoices %}<a class="pill border border-line bg-canvas {% if selected_invoice.pk == inv.pk %}ring-2 ring-primary{% endif %}" href="?tab=invoices&invoice={{ inv.pk }}">{{ inv.number }} — {{ inv.customer.name }}</a>{% endfor %}</div>
-    {% if selected_invoice %}
-    <form method="post" action="{% url 'edit_invoice' %}" class="grid gap-4 md:grid-cols-2">{% csrf_token %}
-      <input type="hidden" name="id" value="{{ selected_invoice.pk }}">
-      <div><label class="label">شماره فاکتور</label><input class="field" value="{{ selected_invoice.number }}" disabled></div>
-      <div><label class="label">مشتری</label><input class="field" value="{{ selected_invoice.customer.name }}" disabled></div>
-      <div><label class="label">نوع تسویه</label><input name="settlement" value="{{ selected_invoice.settlement }}" class="field"></div>
-      <div><label class="label">وضعیت</label><select name="status" class="field">{% for st in invoice_statuses %}<option {% if selected_invoice.status == st %}selected{% endif %}>{{ st }}</option>{% endfor %}</select></div>
-      <div class="md:col-span-2"><label class="label">توضیحات</label><textarea name="note" class="field" rows="3">{{ selected_invoice.note }}</textarea></div>
-      <label class="flex items-center gap-2 text-sm font-bold"><input type="checkbox" name="commission_paid" value="1" {% if selected_invoice.commission_paid %}checked{% endif %}> پورسانت این فاکتور پرداخت شده</label>
-      <div class="md:col-span-2"><button class="btn btn-green" type="submit">ذخیره تغییرات فاکتور</button></div>
+    <section class="edit-section">
+      <div class="edit-head">
+        <div>
+          <h2>مدیریت فاکتورهای فروش</h2>
+          <p>فاکتور را انتخاب کنید و مشخصات، اقلام، پرداختی‌ها و چک‌ها را یکجا اصلاح کنید.</p>
+        </div>
+      </div>
+      <form method="get" class="finder">
+        <input type="hidden" name="tab" value="invoices">
+        <div>
+          <label class="label" for="invoiceSearch">جستجو</label>
+          <input id="invoiceSearch" name="q" value="{{ q }}" class="field" placeholder="شماره فاکتور یا نام مشتری">
+        </div>
+        <button class="btn btn-outline" type="submit">جستجو</button>
+      </form>
+      {% if invoices or selected_invoice %}
+      <div class="mt-4">
+        <label class="label" for="invoicePick">فاکتور</label>
+        <select id="invoicePick" class="field" aria-label="انتخاب فاکتور" onchange="if (this.value) location.href = this.value">
+          <option value="" {% if not selected_invoice %}selected{% endif %} disabled>یک فاکتور را انتخاب کنید</option>
+          {% if selected_invoice %}
+          <option value="?tab=invoices&invoice={{ selected_invoice.pk }}{% if q %}&q={{ q|urlencode }}{% endif %}" selected>{{ selected_invoice.number }} — {{ selected_invoice.customer.name }}</option>
+          {% endif %}
+          {% for inv in invoices %}
+            {% if not selected_invoice or inv.pk != selected_invoice.pk %}
+            <option value="?tab=invoices&invoice={{ inv.pk }}{% if q %}&q={{ q|urlencode }}{% endif %}">{{ inv.number }} — {{ inv.customer.name }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      {% else %}
+      <p class="mt-4 text-sm font-semibold text-muted">فاکتوری با این عبارت پیدا نشد.</p>
+      {% endif %}
+    </section>
+    {% if invoice_form %}
+    <form id="invoiceForm" method="post" action="{% url 'edit_invoice' %}?tab=invoices&invoice={{ invoice_form.id }}" class="edit-stack">{% csrf_token %}
+      <input type="hidden" name="id" value="{{ invoice_form.id }}">
+      {% if invoice_errors %}
+      <div class="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
+        <ul class="list-disc pr-5">{% for err in invoice_errors %}<li>{{ err }}</li>{% endfor %}</ul>
+      </div>
+      {% endif %}
+
+      <section class="edit-section">
+        <div class="edit-head">
+          <div>
+            <h3>مشخصات فاکتور</h3>
+            <p>شماره، تاریخ و نوع تسویه قابل اصلاح است</p>
+          </div>
+        </div>
+        <div class="invoice-lock">
+          <div><span>مشتری</span><b>{{ invoice_form.customer_name }}</b></div>
+          <div><span>وضعیت</span><b>{{ invoice_form.status }}</b></div>
+        </div>
+        <div class="edit-grid cols-3">
+          <div><label class="label">شماره فاکتور</label><input name="number" value="{{ invoice_form.number }}" class="field" dir="ltr" required></div>
+          <div>
+            <label class="label">کارشناس</label>
+            <select name="expert" class="field">
+              <option value="" {% if not invoice_form.expert_id %}selected{% endif %}>عمومی</option>
+              {% for person in experts %}<option value="{{ person.pk }}" {% if invoice_form.expert_id == person.pk|stringformat:"s" %}selected{% endif %}>{{ person.report_name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div><label class="label">تاریخ فروش</label><input name="sold_on" value="{{ invoice_form.sold_on|input_date }}" class="field cursor-pointer" data-jdate readonly placeholder="۱۴۰۵/۰۶/۱۲" required></div>
+          <div>
+            <label class="label">نوع تسویه</label>
+            <select name="settlement" class="field">{% for item in settlements %}<option {% if invoice_form.settlement == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select>
+          </div>
+          <div class="span-all"><label class="label">توضیحات</label><textarea name="note" class="field" rows="3">{{ invoice_form.note }}</textarea></div>
+          <label class="commission-row span-all"><input type="checkbox" name="commission_paid" value="1" {% if invoice_form.commission_paid %}checked{% endif %}> پورسانت این فاکتور پرداخت شده</label>
+        </div>
+      </section>
+
+      <section class="edit-section">
+        <div class="edit-head">
+          <div>
+            <h3>اقلام فاکتور</h3>
+            <p>مبالغ به تومان و برای هر واحد است</p>
+          </div>
+          <button type="button" class="btn btn-outline" data-add="invoiceItems">+ افزودن قلم</button>
+        </div>
+        <div id="invoiceItems">
+          {% for line in invoice_form.lines %}
+          <div data-row class="row-card">
+            <div class="row-top"><span class="text-xs font-extrabold text-muted" data-label>قلم</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
+            <div class="line-grid">
+              <div>
+                <label class="label">کالا</label>
+                <select name="product" class="field">
+                  <option value="">انتخاب کالا</option>
+                  {% for name in products %}
+                  <option value="{{ name }}" {% if line.product == name %}selected{% endif %}>{{ name }}</option>
+                  {% endfor %}
+                  {% if line.product and line.product not in products %}
+                  <option value="{{ line.product }}" selected>{{ line.product }}</option>
+                  {% endif %}
+                </select>
+              </div>
+              <div><label class="label">تعداد</label><input name="qty" class="field" dir="ltr" inputmode="decimal" value="{{ line.qty }}"></div>
+              <div><label class="label">قیمت فروش هر واحد</label><input name="unit_price" class="field" dir="ltr" inputmode="numeric" value="{{ line.unit_price }}"></div>
+              <div><label class="label">قیمت خرید هر واحد</label><input name="unit_cost" class="field" dir="ltr" inputmode="numeric" value="{{ line.unit_cost }}"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <div class="pair-grid">
+        <section class="edit-section">
+          <div class="edit-head">
+            <div>
+              <h3>پرداختی‌ها</h3>
+              <p>واریزهای نقدی همین فاکتور</p>
+            </div>
+            <button type="button" class="btn btn-outline" data-add="invoicePays">+ افزودن پرداخت</button>
+          </div>
+          <div id="invoicePays">
+            {% for pay in invoice_form.payments %}
+            <div data-row class="row-card">
+              <div class="row-top"><span class="text-xs font-extrabold text-muted" data-label>پرداخت</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
+              <div class="edit-grid cols-2">
+                <div><label class="label">مبلغ</label><input name="pay_amount" class="field" dir="ltr" inputmode="numeric" value="{{ pay.amount }}"></div>
+                <div><label class="label">تاریخ</label><input name="pay_date" class="field cursor-pointer" data-jdate readonly placeholder="۱۴۰۵/۰۶/۱۲" value="{{ pay.paid_on|input_date }}"></div>
+                <div class="span-all"><label class="label">روش</label><select name="pay_method" class="field">{% for m in pay_methods %}<option {% if pay.method == m %}selected{% endif %}>{{ m }}</option>{% endfor %}</select></div>
+                <div class="span-all"><label class="label">یادداشت</label><input name="pay_note" class="field" value="{{ pay.note }}" placeholder="اختیاری"></div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+        <section class="edit-section">
+          <div class="edit-head">
+            <div>
+              <h3>چک‌ها</h3>
+              <p>فروش قسطی حداقل یک چک می‌خواهد</p>
+            </div>
+            <button type="button" class="btn btn-outline" data-add="invoiceChecks">+ افزودن چک</button>
+          </div>
+          <div id="invoiceChecks">
+            {% for chk in invoice_form.checks %}
+            <div data-row class="row-card">
+              <div class="row-top"><span class="text-xs font-extrabold text-muted" data-label>چک</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
+              <input type="hidden" name="chk_id" value="{{ chk.id }}">
+              <div class="edit-grid cols-2">
+                <div><label class="label">شماره چک</label><input name="chk_number" class="field" dir="ltr" value="{{ chk.number }}"></div>
+                <div><label class="label">مبلغ</label><input name="chk_amount" class="field" dir="ltr" inputmode="numeric" value="{{ chk.amount }}"></div>
+                <div><label class="label">سررسید</label><input name="chk_date" class="field cursor-pointer" data-jdate readonly placeholder="۱۴۰۵/۰۶/۱۲" value="{{ chk.due_on|input_date }}"></div>
+                <div><label class="label">وضعیت</label><select name="chk_status" class="field">{% for st in check_states %}<option value="{{ st }}" {% if chk.status == st %}selected{% endif %}>{{ st }}</option>{% endfor %}</select></div>
+                <div class="span-all"><label class="label">یادداشت</label><input name="chk_note" class="field" value="{{ chk.note }}" placeholder="اختیاری"></div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+      </div>
+
     </form>
-    {% endif %}
-    {% elif tab == 'payments' %}
-    <h2 class="text-xl font-extrabold">ویرایش سوابق پرداختی</h2>
-    <div class="mb-4 flex flex-wrap gap-2">{% for pay in payments %}<a class="pill border border-line bg-canvas" href="?tab=payments&payment={{ pay.pk }}">{{ pay.invoice.number }} · {{ pay.amount|toman }}</a>{% endfor %}</div>
-    {% if selected_payment %}
-    <form method="post" action="{% url 'edit_payment' %}" class="grid gap-4 md:grid-cols-2">{% csrf_token %}
-      <input type="hidden" name="id" value="{{ selected_payment.pk }}">
-      <div><label class="label">مبلغ</label><input name="amount" value="{{ selected_payment.amount }}" class="field" dir="ltr"></div>
-      <div><label class="label">روش</label><select name="method" class="field">{% for m in pay_methods %}<option {% if selected_payment.method == m %}selected{% endif %}>{{ m }}</option>{% endfor %}</select></div>
-      <div><label class="label">تاریخ</label><input name="paid_on" value="{{ selected_payment.paid_on|jdate }}" class="field cursor-pointer" data-jdate readonly placeholder="۱۴۰۵/۰۶/۱۲"></div>
-      <div><label class="label">یادداشت</label><input name="note" value="{{ selected_payment.note }}" class="field"></div>
-      <div><button class="btn btn-green" type="submit">ذخیره پرداخت</button></div>
-    </form>
-    {% endif %}
-    {% elif tab == 'checks' %}
-    <h2 class="text-xl font-extrabold">ویرایش چک‌ها</h2>
-    <div class="mb-4 flex flex-wrap gap-2">{% for chk in checks %}<a class="pill border border-line bg-canvas" href="?tab=checks&check={{ chk.pk }}">{{ chk.number|default:chk.invoice.number }} · {{ chk.status }}</a>{% endfor %}</div>
-    {% if selected_check %}
-    <form method="post" action="{% url 'edit_check' %}" enctype="multipart/form-data" class="grid gap-4 md:grid-cols-2">{% csrf_token %}
-      <input type="hidden" name="id" value="{{ selected_check.pk }}">
-      <div><label class="label">شماره چک</label><input name="number" value="{{ selected_check.number }}" class="field" dir="ltr"></div>
-      <div><label class="label">مبلغ</label><input name="amount" value="{{ selected_check.amount }}" class="field" dir="ltr"></div>
-      <div><label class="label">سررسید</label><input name="due_on" value="{{ selected_check.due_on|jdate }}" class="field cursor-pointer" data-jdate readonly placeholder="۱۴۰۵/۰۶/۱۲"></div>
-      <div><label class="label">وضعیت</label><select name="status" class="field">{% for st in check_states %}<option {% if selected_check.status == st %}selected{% endif %}>{{ st }}</option>{% endfor %}</select></div>
-      <div class="md:col-span-2"><label class="label">تصویر چک</label><input type="file" name="image" accept="image/*,.pdf"></div>
-      <div><button class="btn btn-green" type="submit">ذخیره چک</button></div>
-    </form>
+    <div class="edit-save">
+      <form method="post" action="{% url 'edit_invoice_delete' %}" onsubmit="return confirm('فاکتور {{ invoice_form.number }} به همراه اقلام، پرداخت‌ها و چک‌هایش حذف شود؟');">{% csrf_token %}
+        <input type="hidden" name="id" value="{{ invoice_form.id }}">
+        <button class="btn btn-danger" type="submit">حذف فاکتور</button>
+      </form>
+      <button class="btn btn-green" type="submit" form="invoiceForm">ذخیره تغییرات فاکتور</button>
+    </div>
+    {% elif not invoices %}
+    {% else %}
+    <p class="edit-section text-sm font-semibold text-muted">برای دیدن فرم، یک فاکتور را از فهرست بالا انتخاب کنید.</p>
     {% endif %}
     {% endif %}
-  </main>
+  </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const form = document.getElementById('invoiceForm');
+  if (!form) return;
+  const groups = [
+    ['invoiceItems', 'قلم'],
+    ['invoicePays', 'پرداخت'],
+    ['invoiceChecks', 'چک'],
+  ];
+
+  function fa(n) {
+    return String(n).replace(/\d/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[digit]);
+  }
+
+  function paintLabels() {
+    groups.forEach(([id, label]) => {
+      const box = document.getElementById(id);
+      if (!box) return;
+      box.querySelectorAll('[data-row]').forEach((row, index) => {
+        const el = row.querySelector('[data-label]');
+        if (el) el.textContent = label + ' ' + fa(index + 1);
+      });
+    });
+  }
+
+  function clearRow(row) {
+    row.querySelectorAll('input').forEach((el) => {
+      if (el.type === 'hidden') el.value = '';
+      else el.value = el.name === 'qty' ? '1' : '';
+    });
+    row.querySelectorAll('select').forEach((el) => { el.selectedIndex = 0; });
+  }
+
+  function addRow(id) {
+    const box = document.getElementById(id);
+    const row = box && box.querySelector('[data-row]');
+    if (!row) return;
+    const clone = row.cloneNode(true);
+    clearRow(clone);
+    box.appendChild(clone);
+    paintLabels();
+  }
+
+  function removeRow(btn) {
+    const row = btn.closest('[data-row]');
+    const box = row && row.parentElement;
+    if (!box) return;
+    if (box.querySelectorAll('[data-row]').length === 1) clearRow(row);
+    else row.remove();
+    paintLabels();
+  }
+
+  form.addEventListener('click', (event) => {
+    const add = event.target.closest('[data-add]');
+    if (add) addRow(add.dataset.add);
+    const remove = event.target.closest('[data-remove]');
+    if (remove) removeRow(remove);
+  });
+  paintLabels();
+})();
+</script>
 {% endblock %}

@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .access import visible_invoices
-from .credit import INVOICE_STATUSES, PAY_METHODS, SETTLEMENTS
+from .credit import CHECK_STATES, INVOICE_STATUSES, PAY_METHODS, SETTLEMENTS
 from .decorators import page_required
 from .jalali import parse_jalali, parse_money, to_fa_digits
 from .models import Check, Payment
@@ -145,6 +145,7 @@ def sale_detail(request, pk):
         'checks': list(invoice.checks.all()),
         'figures': _figures(invoice),
         'pay_methods': PAY_METHODS,
+        'check_states': CHECK_STATES,
         'today': timezone.localdate(),
     })
 
@@ -191,27 +192,14 @@ def add_payment(request, pk):
 
 @require_POST
 @page_required('sales')
-def collect_check(request, pk, check_pk):
+def set_check_status(request, pk, check_pk):
     invoice = get_object_or_404(visible_invoices(request.user), pk=pk)
     check = get_object_or_404(Check.objects.filter(invoice=invoice), pk=check_pk)
-    if check.status == 'وصول‌شده':
-        messages.error(request, 'این چک قبلاً وصول شده است.')
+    status = (request.POST.get('status') or '').strip()
+    if status not in CHECK_STATES:
+        messages.error(request, 'وضعیت چک معتبر نیست.')
     else:
-        check.status = 'وصول‌شده'
+        check.status = status
         check.save(update_fields=['status'])
-        messages.success(request, 'چک وصول شد.')
-    return redirect('sale_detail', pk=invoice.pk)
-
-
-@require_POST
-@page_required('sales')
-def bounce_check(request, pk, check_pk):
-    invoice = get_object_or_404(visible_invoices(request.user), pk=pk)
-    check = get_object_or_404(Check.objects.filter(invoice=invoice), pk=check_pk)
-    if check.status == 'برگشتی':
-        messages.error(request, 'این چک قبلاً برگشت خورده است.')
-    else:
-        check.status = 'برگشتی'
-        check.save(update_fields=['status'])
-        messages.success(request, 'چک برگشت خورد.')
+        messages.success(request, 'وضعیت چک ذخیره شد.')
     return redirect('sale_detail', pk=invoice.pk)

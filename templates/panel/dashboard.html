@@ -7,7 +7,8 @@
   .chart-share li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; column-gap: 10px; border-radius: 14px; background: #f8fafc; padding: 8px 10px; }
   .chart-share .swatch { width: 10px; height: 10px; border-radius: 999px; }
   .chart-share .name { font-size: 12.5px; font-weight: 800; color: #0f172a; }
-  .chart-share .sum { display: block; margin-top: 2px; font-size: 12px; font-weight: 900; color: #0f172a; }
+  .chart-share .side { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 2px; }
+  .chart-share .sum { font-size: 12px; font-weight: 900; color: #0f172a; white-space: nowrap; }
   .chart-share .meta { margin-top: 2px; font-size: 11px; font-weight: 700; color: #64748b; }
   .chart-share .pct { font-size: 14px; font-weight: 900; color: #0e7490; }
   .chart-share .chart-piece { display: block; width: 100%; margin-top: 2px; padding: 0; border: 0; background: transparent; text-align: right; font: inherit; font-size: 11px; font-weight: 800; color: #0e7490; cursor: pointer; }
@@ -68,9 +69,26 @@
   .chart-customers-table a:hover { text-decoration: underline; }
   .chart-customers-table .amount { font-weight: 800; color: #0e7490; white-space: nowrap; }
   .chart-customers-empty { padding: 32px 16px; text-align: center; font-weight: 700; color: #64748b; }
-  [data-kpi-card] { cursor: pointer; }
-  [data-kpi-card]:focus-visible { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #0e7490; }
-  .kpi-card-more { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 4px; margin-top: 12px; font-size: 11px; font-weight: 800; color: #0e7490; }
+  [data-kpi-card] {
+    --kpi: #4f46e5;
+    --kpi-soft: #f5f7ff;
+    --kpi-line: #e0e7ff;
+    cursor: pointer;
+    background: var(--kpi-soft);
+    border-color: var(--kpi-line);
+    border-bottom: 3px solid var(--kpi);
+  }
+  [data-kpi-card="total"] { --kpi: #0e7490; --kpi-soft: #f3fcfe; --kpi-line: #cffafe; }
+  [data-kpi-card="received"],
+  [data-kpi-card="collected"] { --kpi: #059669; --kpi-soft: #f0fdf4; --kpi-line: #bbf7d0; }
+  [data-kpi-card="outstanding"],
+  [data-kpi-card="checks"] { --kpi: #e11d48; --kpi-soft: #fff1f2; --kpi-line: #fecdd3; }
+  [data-kpi-card="profit"] { --kpi: #d97706; --kpi-soft: #fffbeb; --kpi-line: #fde68a; }
+  [data-kpi-card="count"] { --kpi: #2563eb; --kpi-soft: #eff6ff; --kpi-line: #bfdbfe; }
+  [data-kpi-card="loyal"] { --kpi: #7c3aed; --kpi-soft: #f5f3ff; --kpi-line: #ddd6fe; }
+  [data-kpi-card]:focus-visible { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--kpi); }
+  .kpi-icon { background: #fff; color: var(--kpi); box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05); }
+  .kpi-card-more { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 4px; margin-top: 12px; font-size: 11px; font-weight: 800; color: var(--kpi, #0e7490); }
   .kpi-detail-search { display: flex; align-items: center; gap: 8px; max-width: 420px; margin-top: 16px; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; padding: 8px 12px; font-size: 13px; font-weight: 800; color: #64748b; box-shadow: 0 10px 30px -5px rgba(0,0,0,0.05); }
   .kpi-detail-search input { min-width: 0; flex: 1; border: 0; background: transparent; font: inherit; font-weight: 700; color: #0f172a; outline: none; }
   .chart-customers-table tfoot td { position: sticky; bottom: 0; border-top: 1px solid #e2e8f0; background: #f8fafc; font-weight: 900; }
@@ -128,39 +146,16 @@
 </div>
 <section class="mt-3 grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-5" data-kpis>
   {% for kpi in kpis %}
-  <article class="group relative min-h-[140px] min-w-0 overflow-hidden rounded-[20px] border border-line bg-white p-[22px] shadow-card transition duration-300 hover:-translate-y-1 hover:shadow-lift lg:p-4" data-kpi-card="{{ kpi.key }}" role="button" tabindex="0" aria-label="جدول {{ kpi.label }}"
-    {% if kpi.tone == 'c1' %}border-b-[3px] border-b-[#0e7490]
-    {% elif kpi.tone == 'c2' %}border-b-[3px] border-b-[#059669]
-    {% elif kpi.tone == 'c3' %}border-b-[3px] border-b-[#e11d48]
-    {% elif kpi.tone == 'c4' %}border-b-[3px] border-b-[#d97706]
-    {% elif kpi.tone == 'c5' %}border-b-[3px] border-b-[#6d28d9]
-    {% elif kpi.tone == 'c6' %}border-b-[3px] border-b-[#2563eb]
-    {% elif kpi.tone == 'c7' %}border-b-[3px] border-b-[#0d9488]
-    {% else %}border-b-[3px] border-b-[#4f46e5]{% endif %}">
-    <span class="pointer-events-none absolute -bottom-12 -left-12 h-[120px] w-[120px] rounded-full opacity-60 transition duration-300 group-hover:scale-125 group-hover:opacity-100
-      {% if kpi.tone == 'c1' %}bg-[#cffafe]
-      {% elif kpi.tone == 'c2' %}bg-[#d1fae5]
-      {% elif kpi.tone == 'c3' %}bg-[#ffe4e6]
-      {% elif kpi.tone == 'c4' %}bg-[#fef3c7]
-      {% elif kpi.tone == 'c5' %}bg-[#ede9fe]
-      {% elif kpi.tone == 'c6' %}bg-[#dbeafe]
-      {% elif kpi.tone == 'c7' %}bg-[#ccfbf1]
-      {% else %}bg-[#e0e7ff]{% endif %}"></span>
+  <article class="group relative min-h-[140px] min-w-0 overflow-hidden rounded-[20px] border p-[22px] shadow-card transition duration-300 hover:-translate-y-1 hover:shadow-lift lg:p-4" data-kpi-card="{{ kpi.key }}" data-tone="{{ kpi.tone }}" role="button" tabindex="0" aria-label="جدول {{ kpi.label }}">
     <div class="relative z-[1] flex items-center justify-between gap-2.5">
       <span class="min-w-0 text-sm font-extrabold leading-snug text-muted lg:text-[13px]">{{ kpi.label }}</span>
-      <span class="grid h-[46px] w-[46px] shrink-0 place-items-center rounded-[14px] bg-white shadow-[0_4px_12px_rgba(0,0,0,0.04)]
-        {% if kpi.tone == 'c1' %}text-[#0e7490]
-        {% elif kpi.tone == 'c2' %}text-[#059669]
-        {% elif kpi.tone == 'c3' %}text-[#e11d48]
-        {% elif kpi.tone == 'c4' %}text-[#d97706]
-        {% elif kpi.tone == 'c5' %}text-[#6d28d9]
-        {% elif kpi.tone == 'c6' %}text-[#2563eb]
-        {% elif kpi.tone == 'c7' %}text-[#0d9488]
-        {% else %}text-[#4f46e5]{% endif %}">
+      <span class="kpi-icon grid h-[46px] w-[46px] shrink-0 place-items-center rounded-[14px]">
         {% if kpi.key == 'total' %}
         <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
         {% elif kpi.key == 'received' %}
         <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+        {% elif kpi.key == 'collected' %}
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><rect x="2" y="6" width="20" height="12" rx="2"></rect><path d="M6 12h4"></path><polyline points="14 12 16 14 20 10"></polyline></svg>
         {% elif kpi.key == 'outstanding' %}
         <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
         {% elif kpi.key == 'profit' %}
@@ -612,5 +607,5 @@
 {% endblock %}
 {% block scripts %}
 <script src="{% static 'vendor/chart.umd.min.js' %}"></script>
-<script src="{% static 'panel/dashboard.js' %}?v=68"></script>
+<script src="{% static 'panel/dashboard.js' %}?v=71"></script>
 {% endblock %}

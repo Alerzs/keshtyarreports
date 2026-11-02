@@ -6,6 +6,7 @@ from io import BytesIO
 
 from django.db import transaction
 
+from .credit import canonical_check_status
 from .jalali import (
     JALALI_MONTHS, gregorian_to_jalali, jalali_to_gregorian, month_key, parse_jalali, to_en_digits, to_fa_digits,
 )
@@ -270,7 +271,7 @@ def _parse(book):
         checks[number].append({
             'amount': _money(row[1]),
             'due_on': _exact_date(row[2], f'سررسید چک فاکتور {number}'),
-            'status': _text(row[3])[:40] or 'در انتظار',
+            'status': canonical_check_status(_text(row[3])),
             'note': _text(row[4])[:240],
         })
     commissions = {}

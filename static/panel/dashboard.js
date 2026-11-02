@@ -549,13 +549,6 @@
       name.textContent = label;
       text.append(name);
       if (repeat && once) {
-        const total = (Number(repeat[index]) || 0) + (Number(once[index]) || 0);
-        const sum = document.createElement('b');
-        sum.className = 'sum';
-        sum.textContent = 'مجموع ' + textOf(total);
-        text.append(sum);
-      }
-      if (repeat && once) {
         text.append(
           pieceButton(list, label + ' · مشتری وفادار', 'وفادار ' + textOf(repeat[index]), (loyalty.repeatBuyers || [])[index]),
           pieceButton(list, label + ' · تک‌خرید', 'تک‌خرید ' + textOf(once[index]), (loyalty.onceBuyers || [])[index]),
@@ -566,11 +559,21 @@
         meta.textContent = textOf(values[index]);
         text.append(meta);
       }
+      const side = document.createElement('div');
+      side.className = 'side';
+      if (repeat && once) {
+        const total = (Number(repeat[index]) || 0) + (Number(once[index]) || 0);
+        const sum = document.createElement('b');
+        sum.className = 'sum';
+        sum.textContent = 'مجموع ' + textOf(total);
+        side.append(sum);
+      }
       const pct = document.createElement('b');
       pct.className = 'pct';
       pct.style.color = colors[index];
       pct.textContent = fa(percents[index]) + '٪';
-      item.append(swatch, text, pct);
+      side.append(pct);
+      item.append(swatch, text, side);
       return item;
     }));
   }
@@ -1254,7 +1257,7 @@
     },
     received: {
       source: 'کل دریافتی (نقد/کارت)',
-      title: 'واریزهای نقد، کارت و چک وصول‌شده',
+      title: 'واریزهای نقد و کارت',
       unit: 'واریز',
       empty: 'دریافتی‌ای در این بازه نیست.',
       rows: (tables) => (tables.receipts || []).slice(),
@@ -1266,6 +1269,23 @@
         { label: 'شماره فاکتور', text: (row) => row.number, link: 'sale' },
         { label: 'روش', text: (row) => row.method },
         { label: 'تاریخ', text: (row) => row.date },
+      ],
+    },
+    collected: {
+      source: 'مجموع چک‌های وصول‌شده',
+      title: 'چک‌هایی که وصول شده‌اند',
+      unit: 'چک',
+      empty: 'چک وصول‌شده‌ای در این بازه نیست.',
+      rows: (tables) => (tables.collected || []).slice(),
+      sortIndex: 1,
+      sortDir: -1,
+      columns: [
+        { label: 'مشتری', text: (row) => row.customer, link: 'customer' },
+        { label: 'مبلغ', money: true, sum: true, text: (row) => row.amount },
+        { label: 'شماره چک', text: (row) => row.checkNumber },
+        { label: 'وضعیت', text: (row) => row.status },
+        { label: 'سررسید', text: (row) => row.date },
+        { label: 'شماره فاکتور', text: (row) => row.number, link: 'sale' },
       ],
     },
     outstanding: {
