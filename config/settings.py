@@ -127,32 +127,15 @@ def sqlite_path():
 database_url = os.environ.get('DATABASE_URL', '').strip()
 postgres_host = os.environ.get('POSTGRESQL_DB_HOST', '').strip()
 
-if database_url:
-    DATABASES = {'default': postgres_from_url(database_url)}
-elif postgres_host:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('POSTGRESQL_DB_NAME', 'postgres'),
-            'USER': os.environ.get('POSTGRESQL_DB_USER', ''),
-            'PASSWORD': os.environ.get('POSTGRESQL_DB_PASS', ''),
-            'HOST': postgres_host,
-            'PORT': os.environ.get('POSTGRESQL_DB_PORT', '5432'),
-            'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '60')),
-        }
-    }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': sqlite_path(),
-            'OPTIONS': {'timeout': 20},
-        }
-    }
 
-_db = DATABASES['default']
-if _db['ENGINE'].endswith('sqlite3') and _db.get('NAME') not in (None, '', ':memory:'):
-    Path(_db['NAME']).parent.mkdir(parents=True, exist_ok=True)
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': sqlite_path(),
+        'OPTIONS': {'timeout': 20},
+    }
+}
+
 
 AUTH_PASSWORD_VALIDATORS = []
 
