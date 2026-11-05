@@ -68,6 +68,7 @@ class KeshttaminSendTests(TestCase):
         with self.assertRaises(KeshttaminError) as caught:
             send_check_sale({'sale_request_id': 4})
         self.assertIn('422', str(caught.exception))
+        self.assertIn('بدنه درخواست ناقص است', str(caught.exception))
 
     @patch('panel.keshttamin.requests.post')
     def test_ok_false_is_failure(self, post):

@@ -180,9 +180,23 @@ def sale_payload(req, invoice):
     return _json_ready(payload)
 
 
+def _error_text(response):
+    """متن error پاسخ کشت‌تأمین، اگر JSON باشد."""
+    try:
+        parsed = response.json()
+    except ValueError:
+        return ''
+    if not isinstance(parsed, dict):
+        return ''
+    detail = str(parsed.get('error') or parsed.get('message') or '').strip()
+    if not detail:
+        return ''
+    return ' ' + detail[:180]
+
+
 def send_check_sale(payload):
     """POST به کشت‌تأمین. فقط پاسخ JSON با ok=true موفق است."""
-    key = (getattr(settings, 'KESHTTAMIN_API_KEY', '') or '').strip()
+    key = (getattr(settings, 'KESHTTAMIN_API_KEY', '') or '').strip().strip("'\"")
     timeout = int(getattr(settings, 'KESHTTAMIN_TIMEOUT', 20) or 20)
     if not key:
         raise KeshttaminError('کلید اتصال کشت‌تأمین (KESHTTAMIN_API_KEY) تنظیم نشده است.')
@@ -205,12 +219,13 @@ def send_check_sale(payload):
         log.warning('keshttamin connection failed for sale_request_id=%s', payload.get('sale_request_id'))
         raise KeshttaminError('ارتباط با کشت‌تأمین برقرار نشد.')
     if response.status_code < 200 or response.status_code >= 300:
+        detail = _error_text(response)
         log.warning(
             'keshttamin rejected sale_request_id=%s status=%s',
             payload.get('sale_request_id'),
             response.status_code,
         )
-        raise KeshttaminError(f'کشت‌تأمین این فروش را نپذیرفت (کد {response.status_code}).')
+        raise KeshttaminError(f'کشت‌تأمین این فروش را نپذیرفت (کد {response.status_code}).{detail}')
     try:
         parsed = response.json()
     except ValueError:

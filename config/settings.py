@@ -172,8 +172,7 @@ LOGIN_REDIRECT_URL = 'dashboard'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ارسال فروش چکی بعد از تایید مدیر. آدرس در panel/keshttamin.py ثابت است.
-KESHTTAMIN_API_KEY = os.environ.get('KESHTTAMIN_API_KEY', '').strip()
+KESHTTAMIN_API_KEY = os.environ.get('KESHTTAMIN_API_KEY', '').strip().strip("'\"")
 KESHTTAMIN_TIMEOUT = int(os.environ.get('KESHTTAMIN_TIMEOUT', '20') or '20')
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
