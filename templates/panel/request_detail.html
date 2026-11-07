@@ -35,7 +35,7 @@
 </section>
 <section class="card mt-4 overflow-auto p-5">
   <h3 class="mb-2 font-extrabold">اقلام</h3>
-  <table class="w-full text-sm"><thead class="text-muted"><tr><th class="py-2 text-right">کالا</th><th class="text-right">تعداد</th><th class="text-right">قیمت فروش هر واحد</th><th class="text-right">قیمت خرید هر واحد</th></tr></thead>
+  <table class="w-full text-center text-sm"><thead class="text-muted"><tr><th class="py-2">کالا</th><th>تعداد</th><th>قیمت فروش هر واحد</th><th>قیمت خرید هر واحد</th></tr></thead>
   <tbody>{% for line in req.line_list %}<tr class="border-t border-line"><td class="py-2">{{ line.product_name }}</td><td>{{ line.qty }}</td><td class="whitespace-nowrap" dir="ltr">{{ line.unit_price|money:money_unit }}</td><td class="whitespace-nowrap" dir="ltr">{{ line.unit_cost|money:money_unit }}</td></tr>{% endfor %}</tbody></table>
 </section>
 <section class="mt-4 grid gap-4 md:grid-cols-2">

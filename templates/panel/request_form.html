@@ -12,6 +12,33 @@
   #saleForm .step-btn.is-on { background: #f0f9ff; color: #0e7490; }
   #saleForm .is-gap { border-color: #f87171; background: #fff1f2; }
   #saleForm .step-btn:focus-visible { outline: 2px solid #0e7490; outline-offset: 2px; }
+  #saleForm .customer-pick { position: relative; }
+  #saleForm #customerQuery { padding-left: 2.4rem; }
+  #saleForm .customer-pick-btn {
+    position: absolute; top: 2px; bottom: 2px; left: 2px; width: 2.2rem;
+    display: grid; place-items: center; border: 0; border-radius: .7rem;
+    background: transparent; color: #64748b; cursor: pointer;
+  }
+  #saleForm .customer-pick-btn:hover { color: #0e7490; }
+  #saleForm .customer-menu {
+    position: absolute; z-index: 40; top: calc(100% + 6px); right: 0; left: 0;
+    max-height: 16rem; margin: 0; padding: .35rem; overflow: auto; list-style: none;
+    border: 1px solid #e2e8f0; border-radius: .9rem; background: #fff;
+    box-shadow: 0 16px 40px -18px rgba(15, 23, 42, .45);
+  }
+  #saleForm .customer-menu button {
+    display: block; width: 100%; border: 0; border-radius: .65rem; background: transparent;
+    padding: .55rem .75rem; text-align: right; font: inherit; font-size: .875rem;
+    font-weight: 700; color: #0f172a; cursor: pointer;
+  }
+  #saleForm .customer-menu button.is-on,
+  #saleForm .customer-menu button:hover { background: #f0f9ff; color: #0e7490; }
+  #saleForm .customer-menu button.is-active { background: #e0f2fe; color: #0e7490; }
+  #saleForm .customer-city { color: #64748b; font-weight: 600; }
+  #saleForm .customer-menu button.is-on .customer-city,
+  #saleForm .customer-menu button.is-active .customer-city,
+  #saleForm .customer-menu button:hover .customer-city { color: #0e7490; }
+  #saleForm .customer-empty { padding: .7rem .75rem; font-size: .8rem; font-weight: 700; color: #64748b; }
 </style>
 {% endblock %}
 {% block content %}
@@ -76,14 +103,16 @@
       </section>
       <section class="card p-4 sm:p-5">
         <h3 class="font-extrabold">مشتری</h3>
-        <p class="mb-3 text-xs text-muted">مشتری را انتخاب کنید تا مشخصات فروش و پرونده اعتبار با هم پر شود</p>
-        <label class="label" for="customerPick">نام مشتری <span class="text-red-500">*</span></label>
-        <select id="customerPick" class="field" data-autofill="{% if autofill_credit %}1{% else %}0{% endif %}">
-          <option value="">انتخاب مشتری</option>
-          {% for c in customers %}
-          <option value="{{ c.id }}" {% if prefill.customer_id == c.id %}selected{% endif %}>{{ c.name }}{% if c.city %} — {{ c.city }}{% endif %}</option>
-          {% endfor %}
-        </select>
+        <p class="mb-3 text-xs text-muted">نام مشتری را جستجو کنید تا مشخصات فروش و پرونده اعتبار پر شود</p>
+        <label class="label" for="customerQuery">نام مشتری <span class="text-red-500">*</span></label>
+        <div class="customer-pick">
+          <input type="hidden" id="customerPick" value="{{ prefill.customer_id }}" data-autofill="{% if autofill_credit %}1{% else %}0{% endif %}">
+          <input id="customerQuery" class="field" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="customerMenu" autocomplete="off" spellcheck="false" placeholder="جستجو یا انتخاب مشتری">
+          <button type="button" id="customerToggle" class="customer-pick-btn" aria-label="نمایش فهرست مشتریان" tabindex="-1">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+          </button>
+          <ul id="customerMenu" class="customer-menu" role="listbox" hidden></ul>
+        </div>
         <button type="button" id="newCustomer" class="btn btn-primary mt-3">ثبت مشتری جدید</button>
         <input name="customer_name" id="customerName" class="field mt-3{% if prefill.customer_id or not prefill.customer_name %} hidden{% endif %}" placeholder="نام مشتری جدید" value="{{ prefill.customer_name }}" autocomplete="off" {% if prefill.customer_id or not prefill.customer_name %}hidden{% endif %}>
         <p id="customerFillNote" class="mt-2 hidden text-xs font-bold" hidden></p>
@@ -822,6 +851,219 @@ if (saleUploads) {
 const people = JSON.parse(document.getElementById('cust-json').textContent);
 const nameInput = document.getElementById('customerName');
 const customerPick = document.getElementById('customerPick');
+const customerQuery = document.getElementById('customerQuery');
+
+function customerLabel(person) {
+  return person && person.city ? person.name + ' — ' + person.city : (person ? person.name : '');
+}
+
+function foldSearch(text) {
+  return String(text || '')
+    .replace(/[\u200c\u200d\u200e\u200f\ufeff]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/[يى]/g, 'ی')
+    .replace(/ك/g, 'ک')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function mountCustomerSearch() {
+  const menu = document.getElementById('customerMenu');
+  const toggle = document.getElementById('customerToggle');
+  const box = customerQuery && customerQuery.closest('.customer-pick');
+  if (!customerPick || !customerQuery || !menu || !box) return;
+  let open = false;
+  let active = -1;
+
+  function currentPerson() {
+    return people.find((person) => String(person.id) === String(customerPick.value)) || null;
+  }
+
+  function visiblePeople() {
+    const term = foldSearch(customerQuery.value);
+    const current = currentPerson();
+    const showingCurrent = current && term === foldSearch(customerLabel(current));
+    if (!term || showingCurrent) return people.slice();
+    return people.filter((person) => {
+      return foldSearch(person.name).includes(term) || foldSearch(person.city).includes(term);
+    });
+  }
+
+  function restore() {
+    const found = currentPerson();
+    customerQuery.value = found ? customerLabel(found) : '';
+    if (found) customerQuery.classList.remove('is-gap');
+  }
+
+  function scrollActive() {
+    const current = menu.querySelector('.is-active');
+    if (!current) return;
+    const top = current.offsetTop;
+    const bottom = top + current.offsetHeight;
+    if (top < menu.scrollTop) menu.scrollTop = top;
+    else if (bottom > menu.scrollTop + menu.clientHeight) menu.scrollTop = bottom - menu.clientHeight;
+  }
+
+  function render(rows) {
+    menu.replaceChildren();
+    customerQuery.removeAttribute('aria-activedescendant');
+    if (!rows.length) {
+      const empty = document.createElement('li');
+      empty.className = 'customer-empty';
+      empty.textContent = 'مشتری‌ای با این نام پیدا نشد';
+      menu.appendChild(empty);
+      return;
+    }
+    rows.forEach((person, index) => {
+      const item = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = 'customerOpt-' + person.id;
+      btn.setAttribute('role', 'option');
+      btn.setAttribute('aria-selected', String(person.id) === String(customerPick.value) ? 'true' : 'false');
+      const name = document.createElement('span');
+      name.textContent = person.name;
+      btn.appendChild(name);
+      if (person.city) {
+        const city = document.createElement('span');
+        city.className = 'customer-city';
+        city.textContent = ' — ' + person.city;
+        btn.appendChild(city);
+      }
+      if (String(person.id) === String(customerPick.value)) btn.classList.add('is-on');
+      if (index === active) {
+        btn.classList.add('is-active');
+        customerQuery.setAttribute('aria-activedescendant', btn.id);
+      }
+      btn.addEventListener('mousedown', (event) => {
+        event.preventDefault();
+        choose(person);
+      });
+      item.appendChild(btn);
+      menu.appendChild(item);
+    });
+    scrollActive();
+  }
+
+  menu.addEventListener('mousedown', (event) => event.preventDefault());
+
+  function setOpen(next) {
+    open = next;
+    menu.hidden = !next;
+    customerQuery.setAttribute('aria-expanded', next ? 'true' : 'false');
+    if (!next) return;
+    const rows = visiblePeople();
+    active = rows.findIndex((person) => String(person.id) === String(customerPick.value));
+    render(rows);
+  }
+
+  function choose(person) {
+    customerPick.value = String(person.id);
+    customerPick.dispatchEvent(new Event('change'));
+  }
+
+  function commitQuery() {
+    const term = foldSearch(customerQuery.value);
+    if (!term) {
+      if (customerPick.value) {
+        customerPick.value = '';
+        customerPick.dispatchEvent(new Event('change'));
+      } else {
+        setOpen(false);
+      }
+      return;
+    }
+    const exact = people.filter((person) => {
+      return foldSearch(person.name) === term || foldSearch(customerLabel(person)) === term;
+    });
+    if (exact.length === 1 && String(exact[0].id) !== String(customerPick.value)) {
+      choose(exact[0]);
+      return;
+    }
+    restore();
+    setOpen(false);
+  }
+
+  customerQuery.addEventListener('focus', () => {
+    setOpen(true);
+    customerQuery.select();
+  });
+  customerQuery.addEventListener('input', () => {
+    const rows = visiblePeople();
+    active = rows.length ? 0 : -1;
+    open = true;
+    menu.hidden = false;
+    customerQuery.setAttribute('aria-expanded', 'true');
+    render(rows);
+  });
+  customerQuery.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const rows = visiblePeople();
+      if (!open) {
+        open = true;
+        menu.hidden = false;
+        customerQuery.setAttribute('aria-expanded', 'true');
+        active = rows.findIndex((person) => String(person.id) === String(customerPick.value));
+      }
+      if (!rows.length) {
+        active = -1;
+        render(rows);
+        return;
+      }
+      if (event.key === 'ArrowDown') active = active < rows.length - 1 ? active + 1 : 0;
+      else active = active > 0 ? active - 1 : rows.length - 1;
+      render(rows);
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const rows = visiblePeople();
+      if (!open) {
+        setOpen(true);
+        return;
+      }
+      const person = active >= 0 ? rows[active] : (rows.length === 1 ? rows[0] : null);
+      if (person) choose(person);
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      restore();
+      setOpen(false);
+    }
+  });
+  box.addEventListener('focusout', () => {
+    window.setTimeout(() => {
+      if (box.contains(document.activeElement)) return;
+      commitQuery();
+    }, 0);
+  });
+  if (toggle) {
+    toggle.addEventListener('mousedown', (event) => {
+      event.preventDefault();
+      if (open) {
+        setOpen(false);
+        return;
+      }
+      customerQuery.focus();
+      if (!open) setOpen(true);
+    });
+  }
+  document.addEventListener('mousedown', (event) => {
+    if (!box.contains(event.target)) setOpen(false);
+  });
+  customerPick.addEventListener('change', () => {
+    restore();
+    setOpen(false);
+  });
+  customerPick.addEventListener('pick-sync', () => {
+    restore();
+    setOpen(false);
+  });
+  restore();
+}
 
 function setHidden(el, on) {
   if (!el) return;
@@ -949,6 +1191,7 @@ function creditPieces(person) {
 function applyCustomer(value) {
   if (!customerPick) return;
   customerPick.classList.remove('is-gap');
+  if (customerQuery) customerQuery.classList.remove('is-gap');
   if (!value) {
     setHidden(nameInput, true);
     if (nameInput) nameInput.value = '';
@@ -976,7 +1219,9 @@ function startNewCustomer() {
   if (customerPick) {
     customerPick.value = '';
     customerPick.classList.remove('is-gap');
+    customerPick.dispatchEvent(new Event('pick-sync'));
   }
+  if (customerQuery) customerQuery.classList.remove('is-gap');
   setHidden(nameInput, false);
   if (!alreadyNew) {
     if (nameInput) nameInput.value = '';
@@ -986,6 +1231,7 @@ function startNewCustomer() {
   setCustomerNote('نام مشتری جدید را بنویسید. شماره تماس، شهر و آدرس را در مرحله اعتبار وارد کنید.', false);
 }
 
+mountCustomerSearch();
 if (customerPick) {
   customerPick.addEventListener('change', () => applyCustomer(customerPick.value));
   if (customerPick.dataset.autofill === '1' && customerPick.value) {
@@ -1016,6 +1262,7 @@ function markGaps(text) {
       document.querySelectorAll('#saleForm [name="' + name + '"]').forEach((el) => el.classList.add('is-gap'));
       if (name === 'customer_name' && customerPick && nameInput && !(nameInput.value || '').trim()) {
         customerPick.classList.add('is-gap');
+        if (customerQuery) customerQuery.classList.add('is-gap');
       }
     });
   });
