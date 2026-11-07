@@ -97,35 +97,11 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-def postgres_from_url(url):
-    parsed = urlparse(url)
-    scheme = parsed.scheme.split('+')[0]
-    if scheme not in {'postgres', 'postgresql'}:
-        raise ImproperlyConfigured('DATABASE_URL must be a PostgreSQL URL.')
-    config = {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': unquote(parsed.path.lstrip('/')),
-        'USER': unquote(parsed.username or ''),
-        'PASSWORD': unquote(parsed.password or ''),
-        'HOST': parsed.hostname or '',
-        'PORT': str(parsed.port or 5432),
-        'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '60')),
-    }
-    sslmode = parse_qs(parsed.query).get('sslmode', [''])[0]
-    if sslmode:
-        config['OPTIONS'] = {'sslmode': sslmode}
-    return config
-
-
 def sqlite_path():
     configured = os.environ.get('SQLITE_PATH', '').strip()
     if configured:
         return Path(configured)
     return BASE_DIR / 'DB' / 'db.sqlite3'
-
-
-database_url = os.environ.get('DATABASE_URL', '').strip()
-postgres_host = os.environ.get('POSTGRESQL_DB_HOST', '').strip()
 
 
 DATABASES = {
