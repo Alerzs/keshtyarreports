@@ -753,7 +753,7 @@ def _approve_request(request, req, note, check_sale):
         req.reviewed_at = timezone.now()
         req.invoice = invoice
         if check_sale:
-            send_check_sale(sale_payload(req, invoice))
+            send_check_sale(sale_payload(req))
         req.status = 'approved'
         req.save()
         take_snapshot('requests')

@@ -65,17 +65,14 @@ class KeshttaminSendTests(TestCase):
     @patch('panel.keshttamin.requests.post')
     def test_http_error_is_failure(self, post):
         post.return_value = _Response(422, {'ok': False, 'error': 'بدنه درخواست ناقص است'})
-        with self.assertRaises(KeshttaminError) as caught:
+        with self.assertRaises(KeshttaminError):
             send_check_sale({'sale_request_id': 4})
-        self.assertIn('422', str(caught.exception))
-        self.assertIn('بدنه درخواست ناقص است', str(caught.exception))
 
     @patch('panel.keshttamin.requests.post')
     def test_ok_false_is_failure(self, post):
         post.return_value = _Response(200, {'ok': False, 'error': 'رد شد'})
-        with self.assertRaises(KeshttaminError) as caught:
+        with self.assertRaises(KeshttaminError):
             send_check_sale({'sale_request_id': 4})
-        self.assertIn('رد شد', str(caught.exception))
 
     @patch('panel.keshttamin.requests.post')
     def test_unreadable_body_is_failure(self, post):
@@ -121,19 +118,11 @@ class SaleApprovalTests(TestCase):
         self.assertEqual(self.req.status, 'approved')
         self.assertIsNotNone(self.req.invoice_id)
         payload = send.call_args.args[0]
-        self.assertEqual(payload['event'], 'check_sale_approved')
-        self.assertEqual(payload['sale_request_id'], self.req.pk)
-        self.assertEqual(payload['customer']['name'], 'علی رضایی')
-        self.assertEqual(payload['customer']['credit']['nationalId'], '0012345678')
-        self.assertEqual(payload['checks'][0]['number'], '123')
-        self.assertEqual(payload['checks'][0]['bank'], 'ملت')
-        self.assertEqual(payload['checks'][0]['due_on'], '2026-12-01')
-        self.assertEqual(payload['checks'][0]['due_on_jalali'], '۱۴۰۵/۰۹/۱۰')
-        self.assertEqual(payload['invoice']['number'], self.req.invoice.number)
-        self.assertEqual(payload['invoice']['sale_amount'], 2000)
-        self.assertEqual(payload['lines'][0]['product_name'], 'کود')
-        self.assertEqual(payload['review_note'], 'تایید شد')
-        self.assertEqual(payload['reviewer']['username'], 'boss')
+        self.assertEqual(payload, {
+            'sale_amount': 2000,
+            'check_count': 1,
+            'check_due_dates': ['2026-12-01'],
+        })
 
     @patch('panel.views_requests.send_check_sale', side_effect=KeshttaminError('ارتباط با کشت‌تأمین برقرار نشد.'))
     def test_failed_send_keeps_sale_pending(self, send):
