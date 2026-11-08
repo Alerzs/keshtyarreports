@@ -12,7 +12,7 @@
   <span class="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3.5 py-2 text-[13px] font-bold text-muted">{{ total|fa }} فاکتور</span>
 </header>
 
-<form method="get" class="card mb-5 p-5">
+<form method="get" action="{% url 'sales' %}" class="card mb-5 p-5">
   <div class="flex flex-wrap items-center gap-3">
     <input name="q" value="{{ query }}" placeholder="شماره فاکتور، نام مشتری یا مسئول فروش" class="field min-w-[220px] flex-1">
     <select name="settlement" class="field !w-auto" onchange="this.form.submit()" aria-label="تسویه">

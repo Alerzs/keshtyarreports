@@ -2,12 +2,11 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
-from django.utils import timezone
 from django.views.decorators.http import require_GET
 
 from .decorators import page_required
 from .perms import can_page
-from .jalali import format_jalali, month_label, month_span
+from .jalali import month_label, month_span
 from .levels import RULES
 from .stats import build_dashboard, period_months
 
@@ -50,7 +49,6 @@ def dashboard(request):
             'customerBase': reverse('customers'),
             'salesBase': reverse('sales') if can_page(request.user, 'sales') else '',
         },
-        'synced_at': format_jalali(timezone.localtime(), with_time=True),
         **data,
     })
 

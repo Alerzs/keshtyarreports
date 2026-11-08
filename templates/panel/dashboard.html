@@ -106,23 +106,6 @@
 </style>
 {% endblock %}
 {% block content %}
-<header class="relative overflow-hidden rounded-3xl bg-gradient-to-l from-slate-800 to-ink px-6 py-6 text-white shadow-[0_16px_40px_rgba(15,23,42,.16)]">
-  <div class="pointer-events-none absolute -left-10 -top-16 h-48 w-48 rounded-full bg-sky-400/15"></div>
-  <div class="relative flex flex-wrap items-end justify-between gap-4">
-    <div>
-      <div class="flex items-center gap-2 text-[13px] font-semibold text-white/75">
-        <span class="live-dot h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_0_4px_rgba(52,211,153,.2)]"></span>
-        {% if crm_scope == 'all' %}پایگاه فروش{% else %}{{ user.full_name|default:user.username }}{% endif %}
-        <span class="text-white/40">·</span>
-        <span>{{ synced_at }}</span>
-      </div>
-      <h1 class="mt-2 text-2xl font-black md:text-[28px]">
-        {% if crm_scope == 'self' %}مسیر رشد و عملکرد من{% elif crm_scope == 'team' %}عملکرد تیم من{% else %}داشبورد مدیریت فروش{% endif %}
-      </h1>
-    </div>
-  </div>
-</header>
-
 {% if tab == 'overview' %}
 <div class="mt-6 flex flex-wrap items-center justify-end" data-kpi-panel>
   <div class="chart-span" role="group" aria-label="بازه زمانی شاخص‌ها">

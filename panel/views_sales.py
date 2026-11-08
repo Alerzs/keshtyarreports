@@ -9,7 +9,7 @@ from django.views.decorators.http import require_POST
 from .access import visible_invoices
 from .credit import CHECK_STATES, INVOICE_STATUSES, PAY_METHODS, SETTLEMENTS
 from .decorators import page_required
-from .jalali import parse_jalali, parse_money, to_fa_digits
+from .jalali import parse_jalali, parse_money, to_en_digits, to_fa_digits
 from .models import Check, Payment
 from .stats import cash_due_of, cash_of, collected_of, outstanding_of, received_of
 
@@ -60,11 +60,16 @@ def _rows(user):
     return rows
 
 
+def _fold(text):
+    text = to_en_digits(text or '')
+    return text.replace('ي', 'ی').replace('ك', 'ک').replace('ى', 'ی').replace('ة', 'ه').casefold()
+
+
 def _match(row, query):
     invoice = row['invoice']
     expert = invoice.expert_label or ''
-    haystack = f'{invoice.number} {invoice.customer.name} {expert}'.casefold()
-    return query.casefold() in haystack
+    haystack = _fold(f'{invoice.number} {invoice.customer.name} {expert}')
+    return _fold(query) in haystack
 
 
 @page_required('sales')
@@ -104,7 +109,10 @@ def sales(request):
         rows = [row for row in rows if row['cash_due'] > 0 or row['check_due'] > 0]
     elif balance == 'cleared':
         rows = [row for row in rows if row['cash_due'] <= 0 and row['check_due'] <= 0]
-    page = Paginator(rows, PAGE_SIZE).get_page(request.GET.get('page') or 1)
+    filtered = bool(query or settlement or status or balance or expert_id)
+    page_size = (len(rows) or 1) if filtered else PAGE_SIZE
+    page_number = 1 if filtered else (request.GET.get('page') or 1)
+    page = Paginator(rows, page_size).get_page(page_number)
     filters = urlencode({
         key: value for key, value in {
             'q': query,
