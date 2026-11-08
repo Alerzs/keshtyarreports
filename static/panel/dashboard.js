@@ -693,7 +693,7 @@
   function loyaltyTotalPlugin() {
     return {
       id: 'loyaltyTotals',
-      afterDraw(chart) {
+      afterDatasetsDraw(chart) {
         const datasets = chart.data.datasets || [];
         const count = (chart.data.labels || []).length;
         const horizontal = chart.options.indexAxis === 'y';
@@ -789,6 +789,85 @@
 
   function totalsOf(repeat, once) {
     return (repeat || []).map((n, index) => (Number(n) || 0) + (Number((once || [])[index]) || 0));
+  }
+
+  function sliceRadius(mate, edge, horizontal) {
+    return (ctx) => {
+      const other = Number((mate || [])[ctx.dataIndex]) || 0;
+      if (!other) return 8;
+      if (horizontal) {
+        if (edge === 'end') return { topRight: 8, bottomRight: 8, topLeft: 0, bottomLeft: 0 };
+        return { topLeft: 8, bottomLeft: 8, topRight: 0, bottomRight: 0 };
+      }
+      if (edge === 'end') return { topLeft: 8, topRight: 8, bottomLeft: 0, bottomRight: 0 };
+      return { topLeft: 0, topRight: 0, bottomLeft: 8, bottomRight: 8 };
+    };
+  }
+
+  function cashCheckBars(block) {
+    const labels = block && block.labels;
+    if (!labels || !labels.length) return null;
+    const cashRest = block.cashRest || [];
+    const cashProfit = block.cashProfit || [];
+    const checkRest = block.checkRest || [];
+    const checkProfit = block.checkProfit || [];
+    const layer = (label, data, customers, color, hover, stack, radius) => ({
+      label,
+      data,
+      customers: customers || null,
+      backgroundColor: color,
+      hoverBackgroundColor: hover,
+      stack,
+      borderRadius: radius,
+      borderSkipped: false,
+      maxBarThickness: 18,
+      categoryPercentage: 0.82,
+      barPercentage: 0.78,
+    });
+    const peaks = labels.map((_, index) => Math.max(
+      (Number(cashRest[index]) || 0) + (Number(cashProfit[index]) || 0),
+      (Number(checkRest[index]) || 0) + (Number(checkProfit[index]) || 0),
+    ));
+    const axis = billionAxis(peaks);
+    axis.stacked = true;
+    axis.beginAtZero = true;
+    axis.grace = '6%';
+    axis.grid = { color: '#e8eef2', drawTicks: false };
+    const peak = Math.max(0, ...peaks);
+    if (axis.ticks && axis.ticks.stepSize && peak > 0 && peak / axis.ticks.stepSize < 1.7) {
+      axis.ticks.stepSize /= 5;
+    }
+    return {
+      type: 'bar',
+      barRows: labels.length,
+      rowPitch: 58,
+      plugins: [loyaltyTotalPlugin()],
+      data: {
+        labels,
+        datasets: [
+          layer('سود نقدی', cashProfit, block.cashProfitBuyers, '#12944a', '#0e7a3c', 'cash', sliceRadius(cashRest, 'start', true)),
+          layer('فروش نقدی', cashRest, block.cashRestBuyers, '#b7ebc9', '#8fdbb3', 'cash', sliceRadius(cashProfit, 'end', true)),
+          layer('سود چکی', checkProfit, block.checkProfitBuyers, '#f97316', '#ea580c', 'check', sliceRadius(checkRest, 'start', true)),
+          layer('فروش چکی', checkRest, block.checkRestBuyers, '#ffd0a8', '#ffbf8a', 'check', sliceRadius(checkProfit, 'end', true)),
+        ],
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: { padding: { top: 4, right: 112, bottom: 4, left: 4 } },
+        plugins: { legend: loyaltyLegend(), tooltip: tip(undefined, true) },
+        scales: {
+          y: {
+            stacked: true,
+            grid: { display: false },
+            border: { display: false },
+            ticks: categoryTicks(),
+          },
+          x: axis,
+        },
+      },
+    };
   }
 
   function productBars(labels, repeat, once, buyers) {
@@ -1201,6 +1280,7 @@
       repeatBuyers: d.province.repeatBuyers, onceBuyers: d.province.onceBuyers,
     }], true),
     productChart: (d) => d.product && productBars(d.product.labels, d.product.repeat, d.product.once, { repeat: d.product.repeatBuyers, once: d.product.onceBuyers }),
+    cashCheckChart: (d) => d.monthlyCashCheck && cashCheckBars(d.monthlyCashCheck),
     monthlyTypeChart: (d) => d.monthlyType && pairBar(d.monthlyType.labels, [
       { label: 'نقدی', repeat: d.monthlyType.cashRepeat, once: d.monthlyType.cashOnce, color: '#0f766e', stack: 'cash', repeatBuyers: d.monthlyType.cashRepeatBuyers, onceBuyers: d.monthlyType.cashOnceBuyers },
       { label: 'قسطی', repeat: d.monthlyType.instRepeat, once: d.monthlyType.instOnce, color: '#6d28d9', stack: 'inst', repeatBuyers: d.monthlyType.instRepeatBuyers, onceBuyers: d.monthlyType.instOnceBuyers },
@@ -1761,7 +1841,7 @@
     }
     if (spec.options && (spec.data.datasets || []).some((dataset) => dataset.customers)) watchCursor(spec);
     const frame = el.parentElement;
-    if (frame && spec.barRows) frame.style.height = Math.max(280, spec.barRows * 24 + 64) + 'px';
+    if (frame && spec.barRows) frame.style.height = Math.max(280, spec.barRows * (spec.rowPitch || 24) + 64) + 'px';
     new Chart(el, spec);
     if (shareList && spec.loyalty) renderShare(el, spec.loyalty);
     renderLevelLegend(card, spec.levelLegend);

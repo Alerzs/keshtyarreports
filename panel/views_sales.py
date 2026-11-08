@@ -11,7 +11,7 @@ from .credit import CHECK_STATES, INVOICE_STATUSES, PAY_METHODS, SETTLEMENTS
 from .decorators import page_required
 from .jalali import parse_jalali, parse_money, to_fa_digits
 from .models import Check, Payment
-from .stats import outstanding_of, received_of
+from .stats import cash_due_of, cash_of, collected_of, outstanding_of, received_of
 
 PAGE_SIZE = 10
 
@@ -31,8 +31,10 @@ def _qty_text(qty):
 def _figures(invoice):
     sale = invoice.sale_amount
     cost = int(invoice.purchase_amount or 0)
-    checks = sum(chk.amount for chk in invoice.checks.all())
-    paid = sum(pay.amount for pay in invoice.payments.all())
+    check_rows = list(invoice.checks.all())
+    checks = sum(int(chk.amount or 0) for chk in check_rows)
+    paid = sum(int(pay.amount or 0) for pay in invoice.payments.all())
+    check_received = collected_of(invoice)
     room = max(0, sale - checks - paid)
     return {
         'sale': sale,
@@ -40,6 +42,10 @@ def _figures(invoice):
         'profit': sale - cost,
         'received': received_of(invoice),
         'outstanding': outstanding_of(invoice),
+        'cash_received': cash_of(invoice),
+        'check_received': check_received,
+        'cash_due': cash_due_of(invoice),
+        'check_due': checks - check_received,
         'checks': checks,
         'paid': paid,
         'room': room,
@@ -95,9 +101,9 @@ def sales(request):
     else:
         expert_id = ''
     if balance == 'open':
-        rows = [row for row in rows if row['outstanding'] > 0]
+        rows = [row for row in rows if row['cash_due'] > 0 or row['check_due'] > 0]
     elif balance == 'cleared':
-        rows = [row for row in rows if row['outstanding'] <= 0]
+        rows = [row for row in rows if row['cash_due'] <= 0 and row['check_due'] <= 0]
     page = Paginator(rows, PAGE_SIZE).get_page(request.GET.get('page') or 1)
     filters = urlencode({
         key: value for key, value in {

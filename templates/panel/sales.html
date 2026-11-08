@@ -37,17 +37,18 @@
 </form>
 
 <div class="overflow-auto rounded-2xl border border-line bg-white shadow-card">
-  <table class="w-full min-w-[980px] text-right text-[13px]">
+  <table class="w-full min-w-[1280px] text-right text-[13px]">
     <thead class="bg-canvas text-muted">
       <tr>
-        <th class="px-4 py-3 font-extrabold">شماره فاکتور</th>
-        <th class="px-4 py-3 font-extrabold">نام مشتری</th>
-        <th class="px-4 py-3 font-extrabold">مسئول فروش</th>
-        <th class="px-4 py-3 font-extrabold">مبلغ کل فروش</th>
-        <th class="px-4 py-3 font-extrabold">مبلغ کل خرید</th>
-        <th class="px-4 py-3 font-extrabold">سود کل</th>
-        <th class="px-4 py-3 font-extrabold">جمع دریافتی</th>
-        <th class="px-4 py-3 font-extrabold">مانده حساب</th>
+        <th class="whitespace-nowrap px-4 py-3 font-extrabold">شماره فاکتور</th>
+        <th class="whitespace-nowrap px-4 py-3 font-extrabold">نام مشتری</th>
+        <th class="whitespace-nowrap px-4 py-3 font-extrabold">مسئول فروش</th>
+        <th class="whitespace-nowrap px-4 py-3 font-extrabold">مبلغ کل فروش</th>
+        <th class="whitespace-nowrap px-4 py-3 font-extrabold">مبلغ کل خرید</th>
+        <th class="whitespace-nowrap px-4 py-3 font-extrabold">جمع دریافتی نقدی</th>
+        <th class="whitespace-nowrap px-4 py-3 font-extrabold">جمع دریافتی چکی</th>
+        <th class="whitespace-nowrap px-4 py-3 font-extrabold">مانده حساب نقدی</th>
+        <th class="whitespace-nowrap px-4 py-3 font-extrabold">مانده حساب چکی</th>
       </tr>
     </thead>
     <tbody>
@@ -63,12 +64,13 @@
         <td class="px-4 py-3">{{ row.invoice.expert_label }}</td>
         <td class="whitespace-nowrap px-4 py-3 font-extrabold">{{ row.sale|money:money_unit }}</td>
         <td class="whitespace-nowrap px-4 py-3 font-extrabold">{{ row.cost|money:money_unit }}</td>
-        <td class="whitespace-nowrap px-4 py-3 font-extrabold">{{ row.profit|money:money_unit }}</td>
-        <td class="whitespace-nowrap px-4 py-3 font-extrabold text-emerald-700">{{ row.received|money:money_unit }}</td>
-        <td class="whitespace-nowrap px-4 py-3 font-extrabold {% if row.outstanding %}text-rose-600{% endif %}">{{ row.outstanding|money:money_unit }}</td>
+        <td class="whitespace-nowrap px-4 py-3 font-extrabold text-emerald-700">{{ row.cash_received|money:money_unit }}</td>
+        <td class="whitespace-nowrap px-4 py-3 font-extrabold text-emerald-700">{{ row.check_received|money:money_unit }}</td>
+        <td class="whitespace-nowrap px-4 py-3 font-extrabold {% if row.cash_due %}text-rose-600{% endif %}">{{ row.cash_due|money:money_unit }}</td>
+        <td class="whitespace-nowrap px-4 py-3 font-extrabold {% if row.check_due %}text-rose-600{% endif %}">{{ row.check_due|money:money_unit }}</td>
       </tr>
       {% empty %}
-      <tr><td colspan="8" class="px-4 py-10 text-center font-bold text-muted">فاکتوری با این جستجو پیدا نشد.</td></tr>
+      <tr><td colspan="9" class="px-4 py-10 text-center font-bold text-muted">فاکتوری با این جستجو پیدا نشد.</td></tr>
       {% endfor %}
     </tbody>
   </table>

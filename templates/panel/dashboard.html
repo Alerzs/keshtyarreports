@@ -186,6 +186,7 @@
   {% include "panel/partials/chart.html" with chart_id="provinceChart" title="پراکندگی فروش شهرها" subtitle="بر اساس شهر ثبت‌شده مشتری" box="h-[300px]" click_customers=True %}
   {% include "panel/partials/chart.html" with chart_id="productChart" title="پرفروش‌ترین محصولات" subtitle="پانزده کالای برتر بر اساس مبلغ فروش" box="h-[340px]" click_customers=True %}
   {% include "panel/partials/chart.html" with chart_id="monthlyTypeChart" title="مقایسه ماهانه فروش نقدی و قسطی" subtitle="ترکیب تسویه در هر ماه" box="h-[340px]" click_customers=True %}
+  {% include "panel/partials/chart.html" with chart_id="cashCheckChart" title="فروش نقدی و چکی هر ماه" subtitle="ارتفاع میله مبلغ فروش است و سود همان فروش با رنگ جدا روی میله نشسته" box="h-[420px]" span="lg:col-span-2" click_customers=True %}
   <article class="card p-6 lg:col-span-2">
     <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div><h2 class="text-lg font-extrabold">رتبه‌بندی و ارزش‌آفرینی مشتریان</h2><p class="mt-1 text-[13px] font-semibold text-muted">کلیک روی سطر، پرونده‌ی مشتری را باز می‌کند</p></div>
@@ -269,7 +270,7 @@
     <div class="overflow-auto rounded-2xl border border-line">
       <table class="w-full text-center text-[13px]">
         <thead class="bg-canvas text-muted"><tr>
-          <th class="px-4 py-3 font-extrabold">صاحب چک</th><th class="px-4 py-3 font-extrabold">شماره فاکتور</th><th class="px-4 py-3 font-extrabold">سررسید</th><th class="px-4 py-3 font-extrabold">مبلغ</th><th class="px-4 py-3 font-extrabold">وضعیت</th>
+          <th class="px-4 py-3 font-extrabold">صاحب چک</th><th class="px-4 py-3 font-extrabold">شماره فاکتور</th><th class="px-4 py-3 font-extrabold">سررسید</th><th class="px-4 py-3 font-extrabold">مبلغ</th><th class="px-4 py-3 font-extrabold">وضعیت</th>{% if 'edit' in crm_pages %}<th class="px-4 py-3 font-extrabold">ویرایش</th>{% endif %}
         </tr></thead>
         <tbody>
           {% for chk in check_page %}
@@ -279,8 +280,11 @@
             <td class="px-4 py-3">{{ chk.due|jdate }}</td>
             <td class="whitespace-nowrap px-4 py-3 font-extrabold text-primary">{{ chk.amount|money:money_unit }}</td>
             <td class="px-4 py-3"><span class="pill {{ chk.status|check_tone }}">{{ chk.status }}</span></td>
+            {% if 'edit' in crm_pages %}
+            <td class="px-4 py-3"><a class="btn btn-outline" style="width:2rem;height:2rem;min-height:2rem;padding:0" href="{% url 'edit' %}?tab=invoices&invoice={{ chk.invoice_id }}#invoice-checks" aria-label="ویرایش فاکتور" title="ویرایش فاکتور"><svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></a></td>
+            {% endif %}
           </tr>
-          {% empty %}<tr><td colspan="5" class="px-4 py-8 text-center text-muted">چکی در این بازه نیست.</td></tr>{% endfor %}
+          {% empty %}<tr><td colspan="{% if 'edit' in crm_pages %}6{% else %}5{% endif %}" class="px-4 py-8 text-center text-muted">چکی در این بازه نیست.</td></tr>{% endfor %}
         </tbody>
       </table>
     </div>
@@ -607,5 +611,5 @@
 {% endblock %}
 {% block scripts %}
 <script src="{% static 'vendor/chart.umd.min.js' %}"></script>
-<script src="{% static 'panel/dashboard.js' %}?v=71"></script>
+<script src="{% static 'panel/dashboard.js' %}?v=78"></script>
 {% endblock %}

@@ -138,6 +138,13 @@ def _fresh_sides():
     return {'repeat': {}, 'once': {}}
 
 
+def _bar_parts(sale, profit):
+    """ارتفاع میله برابر فروش است و سود مثبت روی همان میله جدا می‌شود."""
+    sale = max(0, int(sale or 0))
+    shown = min(max(int(profit or 0), 0), sale)
+    return sale - shown, shown
+
+
 def _note_buyer(bucket, customer, amount):
     amount = int(amount or 0)
     if not amount or customer is None:
@@ -198,6 +205,7 @@ def build_dashboard(user, range_key='all', person='', month='all', team_month='a
         'cash': 0, 'inst': 0, 'sales': 0, 'profit': 0,
         'salesRepeat': 0, 'salesOnce': 0, 'profitRepeat': 0, 'profitOnce': 0,
         'cashRepeat': 0, 'cashOnce': 0, 'instRepeat': 0, 'instOnce': 0,
+        'cashRest': 0, 'cashProfit': 0, 'checkRest': 0, 'checkProfit': 0,
     })
     by_type = defaultdict(_split_bucket)
     by_province = defaultdict(_split_bucket)
@@ -214,6 +222,8 @@ def build_dashboard(user, range_key='all', person='', month='all', team_month='a
         'profitRepeat': {}, 'profitOnce': {},
         'cashRepeat': {}, 'cashOnce': {},
         'instRepeat': {}, 'instOnce': {},
+        'cashRest': {}, 'cashProfit': {},
+        'checkRest': {}, 'checkProfit': {},
     })
     methods = defaultdict(_split_bucket)
     method_buyers = defaultdict(_fresh_sides)
@@ -249,16 +259,25 @@ def build_dashboard(user, range_key='all', person='', month='all', team_month='a
         bucket['profitRepeat' if loyal else 'profitOnce'] += inv.profit
         _note_buyer(month_buyers[mk]['sales' + side_cap], buyer, inv.sale_amount)
         _note_buyer(month_buyers[mk]['profit' + side_cap], buyer, inv.profit)
+        rest, shown = _bar_parts(inv.sale_amount, inv.profit)
         if inv.settlement == 'قسطی':
             bucket['inst'] += inv.sale_amount
             bucket['instRepeat' if loyal else 'instOnce'] += inv.sale_amount
+            bucket['checkRest'] += rest
+            bucket['checkProfit'] += shown
             money['inst'][side] += inv.sale_amount
             _note_buyer(month_buyers[mk]['inst' + side_cap], buyer, inv.sale_amount)
+            _note_buyer(month_buyers[mk]['checkRest'], buyer, rest)
+            _note_buyer(month_buyers[mk]['checkProfit'], buyer, shown)
             _note_buyer(sale_buyers['قسطی'][side], buyer, inv.sale_amount)
         else:
             bucket['cash'] += inv.sale_amount
             bucket['cashRepeat' if loyal else 'cashOnce'] += inv.sale_amount
+            bucket['cashRest'] += rest
+            bucket['cashProfit'] += shown
             _note_buyer(month_buyers[mk]['cash' + side_cap], buyer, inv.sale_amount)
+            _note_buyer(month_buyers[mk]['cashRest'], buyer, rest)
+            _note_buyer(month_buyers[mk]['cashProfit'], buyer, shown)
             if inv.settlement == 'نقدی':
                 money['cash'][side] += inv.sale_amount
                 _note_buyer(sale_buyers['نقدی'][side], buyer, inv.sale_amount)
@@ -328,7 +347,7 @@ def build_dashboard(user, range_key='all', person='', month='all', team_month='a
                 'customer': inv.customer.name,
                 'customer_id': inv.customer_id,
                 'invoice_id': inv.pk,
-                'number': chk.number or inv.number,
+                'number': inv.number,
                 'due': chk.due_on,
                 'amount': chk.amount,
                 'status': chk.status,
@@ -454,6 +473,17 @@ def build_dashboard(user, range_key='all', person='', month='all', team_month='a
             'cashOnceBuyers': month_buyer('cashOnce'),
             'instRepeatBuyers': month_buyer('instRepeat'),
             'instOnceBuyers': month_buyer('instOnce'),
+        },
+        'monthlyCashCheck': {
+            'labels': [month_axis_label(k) for k in month_keys],
+            'cashRest': [by_month[k]['cashRest'] for k in month_keys],
+            'cashProfit': [by_month[k]['cashProfit'] for k in month_keys],
+            'checkRest': [by_month[k]['checkRest'] for k in month_keys],
+            'checkProfit': [by_month[k]['checkProfit'] for k in month_keys],
+            'cashRestBuyers': month_buyer('cashRest'),
+            'cashProfitBuyers': month_buyer('cashProfit'),
+            'checkRestBuyers': month_buyer('checkRest'),
+            'checkProfitBuyers': month_buyer('checkProfit'),
         },
         'monthlyProfit': {
             'labels': [month_label(k) for k in month_keys],

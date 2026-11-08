@@ -5,12 +5,18 @@
 <header class="mb-5 flex flex-wrap items-center justify-between gap-3">
   <div>
     <a href="{% url 'sales' %}" class="text-xs font-extrabold text-primary">بازگشت به فروش‌ها</a>
-    <h1 class="mt-1 text-[19px] font-extrabold text-primary-hover" dir="ltr">{{ invoice.number }}</h1>
+    <h1 class="mt-1 text-right text-[19px] font-extrabold text-primary-hover">{{ invoice.number }}</h1>
     <p class="mt-1 text-sm font-semibold text-muted">
       <a class="text-ink hover:text-primary" href="{% url 'customer_profile' invoice.customer_id %}">{{ invoice.customer.name }}</a>
       · {{ invoice.expert_label }} · {{ invoice.sold_on|jdate }} · {{ invoice.settlement }} · {{ invoice.status }}
     </p>
   </div>
+  {% if 'edit' in crm_pages %}
+  <a class="btn btn-outline" href="{% url 'edit' %}?tab=invoices&invoice={{ invoice.pk }}">
+    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+    ویرایش
+  </a>
+  {% endif %}
 </header>
 
 <section class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">

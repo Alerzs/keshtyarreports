@@ -459,7 +459,7 @@ def _customer_choices(user):
 
 
 def _product_choices(current=None, extra_names=()):
-    names = set()
+    names = {'تجهیزات'}
     for name in InvoiceLine.objects.values_list('product_name', flat=True):
         text = str(name or '').strip()
         if text:
@@ -580,6 +580,8 @@ def _save_request(request, current, sellers):
     address = request.POST.get('address', '').strip()
     defer = request.POST.get('defer') == '1'
     lines, payments, checks = _rows_from_post(request)
+    if settlement != 'قسطی':
+        checks = []
     credit, guarantees, references, docs, warnings = _credit_from_post(request)
     errors, good_lines, incomplete = _validate(
         seller, sold_on, settlement, customer_type, name, phone, city, address, lines, payments, checks, defer,

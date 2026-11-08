@@ -11,6 +11,7 @@
   #saleForm details[open] .chev { transform: rotate(180deg); }
   #saleForm .step-btn.is-on { background: #f0f9ff; color: #0e7490; }
   #saleForm .is-gap { border-color: #f87171; background: #fff1f2; }
+  #items input.is-derived { background: #f1f5f9; color: #475569; cursor: default; }
   #saleForm .step-btn:focus-visible { outline: 2px solid #0e7490; outline-offset: 2px; }
   #saleForm .customer-pick { position: relative; }
   #saleForm #customerQuery { padding-left: 2.4rem; }
@@ -125,7 +126,7 @@
       <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 class="font-extrabold">اقلام فاکتور</h3>
-          <p class="text-xs text-muted">مبالغ به تومان است و قیمت‌ها برای هر واحد</p>
+          <p class="text-xs text-muted">مبالغ به تومان است. بعد از تعداد، قیمت واحد یا قیمت کل را وارد کنید تا دیگری حساب شود.</p>
         </div>
         <button type="button" class="btn btn-outline" data-add="items">+ افزودن قلم</button>
       </div>
@@ -134,40 +135,60 @@
           {% for line in entry.line_list %}
           <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
             <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">قلم فاکتور</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
-            <label class="label">کالا <span class="text-red-500">*</span></label>
-            <select name="product" class="field">
-              <option value="">انتخاب کالا</option>
-              {% for name in products %}
-              <option value="{{ name }}" {% if line.product_name == name %}selected{% endif %}>{{ name }}</option>
-              {% endfor %}
-            </select>
-            <div class="mt-2 grid grid-cols-2 gap-2">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="label">کالا <span class="text-red-500">*</span></label>
+                <select name="product" class="field">
+                  <option value="">انتخاب کالا</option>
+                  {% for name in products %}
+                  <option value="{{ name }}" {% if line.product_name == name %}selected{% endif %}>{{ name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
               <div><label class="label">تعداد <span class="text-red-500">*</span></label><input name="qty" class="field" dir="ltr" inputmode="decimal" autocomplete="off" placeholder="تعداد" value="{{ line.qty }}"></div>
-              <div><label class="label">قیمت فروش هر واحد <span class="text-red-500">*</span></label><input name="unit_price" class="field" dir="ltr" placeholder="قیمت فروش هر واحد" value="{{ line.unit_price }}"></div>
-              <div><label class="label">قیمت خرید هر واحد <span class="text-red-500">*</span></label><input name="unit_cost" class="field" dir="ltr" placeholder="قیمت خرید هر واحد" value="{{ line.unit_cost }}"></div>
+            </div>
+            <div class="mt-2 space-y-2">
+              <div class="grid grid-cols-2 gap-2">
+                <div><label class="label">قیمت فروش هر واحد <span class="text-red-500">*</span></label><input name="unit_price" class="field" dir="ltr" placeholder="قیمت فروش هر واحد" value="{{ line.unit_price }}"></div>
+                <div><label class="label">قیمت فروش کل</label><input data-toman data-total="sale" class="field" dir="ltr" placeholder="قیمت فروش کل" autocomplete="off"></div>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div><label class="label">قیمت خرید هر واحد <span class="text-red-500">*</span></label><input name="unit_cost" class="field" dir="ltr" placeholder="قیمت خرید هر واحد" value="{{ line.unit_cost }}"></div>
+                <div><label class="label">قیمت خرید کل</label><input data-toman data-total="cost" class="field" dir="ltr" placeholder="قیمت خرید کل" autocomplete="off"></div>
+              </div>
             </div>
           </div>
           {% endfor %}
         {% else %}
           <div data-row class="rounded-2xl border border-line bg-canvas/70 p-3">
             <div class="mb-2 flex items-center justify-between"><span class="text-xs font-extrabold text-muted">قلم فاکتور</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
-            <label class="label">کالا <span class="text-red-500">*</span></label>
-            <select name="product" class="field">
-              <option value="">انتخاب کالا</option>
-              {% for name in products %}
-              <option value="{{ name }}">{{ name }}</option>
-              {% endfor %}
-            </select>
-            <div class="mt-2 grid grid-cols-2 gap-2">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="label">کالا <span class="text-red-500">*</span></label>
+                <select name="product" class="field">
+                  <option value="">انتخاب کالا</option>
+                  {% for name in products %}
+                  <option value="{{ name }}">{{ name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
               <div><label class="label">تعداد <span class="text-red-500">*</span></label><input name="qty" class="field" dir="ltr" inputmode="decimal" autocomplete="off" placeholder="تعداد" value="1"></div>
-              <div><label class="label">قیمت فروش هر واحد <span class="text-red-500">*</span></label><input name="unit_price" class="field" dir="ltr" placeholder="قیمت فروش هر واحد"></div>
-              <div><label class="label">قیمت خرید هر واحد <span class="text-red-500">*</span></label><input name="unit_cost" class="field" dir="ltr" placeholder="قیمت خرید هر واحد"></div>
+            </div>
+            <div class="mt-2 space-y-2">
+              <div class="grid grid-cols-2 gap-2">
+                <div><label class="label">قیمت فروش هر واحد <span class="text-red-500">*</span></label><input name="unit_price" class="field" dir="ltr" placeholder="قیمت فروش هر واحد"></div>
+                <div><label class="label">قیمت فروش کل</label><input data-toman data-total="sale" class="field" dir="ltr" placeholder="قیمت فروش کل" autocomplete="off"></div>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div><label class="label">قیمت خرید هر واحد <span class="text-red-500">*</span></label><input name="unit_cost" class="field" dir="ltr" placeholder="قیمت خرید هر واحد"></div>
+                <div><label class="label">قیمت خرید کل</label><input data-toman data-total="cost" class="field" dir="ltr" placeholder="قیمت خرید کل" autocomplete="off"></div>
+              </div>
             </div>
           </div>
         {% endif %}
       </div>
     </section>
-    <div class="grid gap-4 xl:grid-cols-2">
+    <div id="invoiceMoney" class="grid gap-4 xl:grid-cols-2">
       <section class="card p-4 sm:p-5">
         <div class="mb-3 flex items-center justify-between gap-2">
           <h3 class="font-extrabold">پرداختی‌ها</h3>
@@ -209,7 +230,7 @@
           {% endif %}
         </div>
       </section>
-      <section class="card p-4 sm:p-5">
+      <section id="checkCard" class="card p-4 sm:p-5">
         <div class="mb-3 flex items-center justify-between gap-2">
           <div>
             <h3 class="font-extrabold">چک‌ها</h3>
@@ -520,7 +541,11 @@ function moneyWords(digits) {
 
 function paintMoney(el) {
   if (!isMoneyField(el)) return;
-  const digits = moneyDigits(el.value);
+  let digits = moneyDigits(el.value);
+  if (document.activeElement === el && !el.readOnly) {
+    if (el.name === 'unit_price') digits = digits.slice(0, 9);
+    else if (el.dataset.total === 'sale') digits = digits.slice(0, 12);
+  }
   const shown = digits ? fa(digits.replace(/\B(?=(\d{3})+(?!\d))/g, '٬')) : '';
   const caret = el.selectionStart;
   const before = caret == null ? digits.length : moneyDigits(el.value.slice(0, caret)).length;
@@ -617,6 +642,86 @@ function syncMoney(root) {
   });
 }
 
+function qtyHundredths(row) {
+  const raw = sanitizeQty(row.querySelector('[name="qty"]').value);
+  if (!raw || raw === '.') return 0;
+  const [whole, frac = ''] = raw.split('.');
+  if (!whole) return 0;
+  return Number(whole) * 100 + Number((frac + '00').slice(0, 2));
+}
+
+function pricePair(row, kind) {
+  const unitName = kind === 'sale' ? 'unit_price' : 'unit_cost';
+  return {
+    unit: row.querySelector('[name="' + unitName + '"]'),
+    total: row.querySelector('[data-total="' + kind + '"]'),
+    key: kind === 'sale' ? 'saleSource' : 'costSource',
+  };
+}
+
+function setDerived(el, locked) {
+  if (!el) return;
+  el.readOnly = locked;
+  el.classList.toggle('is-derived', locked);
+  el.title = locked ? 'این مقدار از روی تعداد و فیلد دیگر حساب شده و قابل ویرایش نیست.' : '';
+}
+
+function writeMoney(el, amount) {
+  if (!el) return;
+  el.value = amount == null || amount === '' ? '' : String(Math.max(0, Math.round(amount)));
+  paintMoney(el);
+}
+
+function syncPricePair(row, kind, edited) {
+  const pair = pricePair(row, kind);
+  if (!pair.unit || !pair.total) return;
+  const sourceEl = edited === 'total' ? pair.total : edited === 'unit' ? pair.unit : null;
+  if (sourceEl) {
+    if (!moneyDigits(sourceEl.value)) {
+      delete row.dataset[pair.key];
+      writeMoney(edited === 'unit' ? pair.total : pair.unit, '');
+      setDerived(pair.unit, false);
+      setDerived(pair.total, false);
+      return;
+    }
+    row.dataset[pair.key] = edited;
+  }
+  const source = row.dataset[pair.key];
+  const qty = qtyHundredths(row);
+  if (!source || !qty) return;
+  if (source === 'unit') {
+    writeMoney(pair.total, Number(moneyDigits(pair.unit.value) || '0') * qty / 100);
+    setDerived(pair.total, true);
+    setDerived(pair.unit, false);
+  } else {
+    writeMoney(pair.unit, Number(moneyDigits(pair.total.value) || '0') * 100 / qty);
+    setDerived(pair.unit, true);
+    setDerived(pair.total, false);
+  }
+}
+
+function syncRowPrices(row) {
+  syncPricePair(row, 'sale');
+  syncPricePair(row, 'cost');
+}
+
+function seedRowPrices(row) {
+  ['sale', 'cost'].forEach((kind) => {
+    const pair = pricePair(row, kind);
+    if (pair.unit && moneyDigits(pair.unit.value)) syncPricePair(row, kind, 'unit');
+  });
+}
+
+function clearPriceLocks(row) {
+  ['sale', 'cost'].forEach((kind) => {
+    const pair = pricePair(row, kind);
+    setDerived(pair.unit, false);
+    setDerived(pair.total, false);
+  });
+  delete row.dataset.saleSource;
+  delete row.dataset.costSource;
+}
+
 function addRow(id) {
   const box = document.getElementById(id);
   const row = box && box.querySelector('[data-row]');
@@ -624,6 +729,7 @@ function addRow(id) {
   const clone = row.cloneNode(true);
   clone.querySelectorAll('input').forEach((el) => { el.value = el.name === 'qty' ? '1' : ''; });
   clone.querySelectorAll('select').forEach((el) => { el.selectedIndex = 0; });
+  clearPriceLocks(clone);
   syncMoney(clone);
   box.appendChild(clone);
 }
@@ -636,6 +742,7 @@ function removeRow(btn) {
   if (rows.length === 1) {
     row.querySelectorAll('input').forEach((el) => { el.value = el.name === 'qty' ? '1' : ''; });
     row.querySelectorAll('select').forEach((el) => { el.selectedIndex = 0; });
+    clearPriceLocks(row);
     syncMoney(row);
     return;
   }
@@ -715,11 +822,30 @@ function fillRecap() {
     ['آدرس', fieldText('address'), 3],
     ['اقلام فاکتور', fa(filledCount('items', 'product')) + ' قلم', 2],
     ['پرداختی‌ها', fa(filledCount('pays', 'pay_amount')) + ' مورد', 2],
-    ['چک‌ها', fa(filledCount('checks', 'chk_amount')) + ' فقره', 2],
+  ];
+  if (!cashSale()) rows.push(['چک‌ها', fa(filledCount('checks', 'chk_amount')) + ' فقره', 2]);
+  rows.push(
     ['اعتبارسنجی', fa(creditFilled) + ' از ' + fa(credit.length) + ' فیلد', 3],
     ['مدارک', fa(docs) + ' مدرک', 3],
-  ];
+  );
   rows.forEach(([label, value, goto]) => box.appendChild(recapItem(label, value, goto)));
+}
+
+function cashSale() {
+  const el = document.querySelector('#saleForm [name="settlement"]');
+  return !el || el.value !== 'قسطی';
+}
+
+function syncChecks() {
+  const cash = cashSale();
+  const card = document.getElementById('checkCard');
+  const grid = document.getElementById('invoiceMoney');
+  if (card) {
+    card.hidden = cash;
+    card.classList.toggle('hidden', cash);
+    card.querySelectorAll('input, select, textarea').forEach((el) => { el.disabled = cash; });
+  }
+  if (grid) grid.classList.toggle('xl:grid-cols-2', !cash);
 }
 
 function showStep(n, scroll) {
@@ -781,12 +907,23 @@ document.getElementById('closeAll').addEventListener('click', () => {
   document.querySelectorAll('#creditBox details').forEach((el) => { el.open = false; });
 });
 document.getElementById('saleForm').addEventListener('input', (event) => {
-  if (event.target && event.target.name === 'qty') paintQty(event.target, false);
-  if (isMoneyField(event.target)) paintMoney(event.target);
+  const el = event.target;
+  if (el && el.name === 'qty') paintQty(el, false);
+  if (isMoneyField(el)) paintMoney(el);
+  const row = el && el.closest ? el.closest('#items [data-row]') : null;
+  if (row) {
+    if (el.name === 'qty') syncRowPrices(row);
+    else if (el.name === 'unit_price' || el.dataset.total === 'sale') syncPricePair(row, 'sale', el.dataset.total ? 'total' : 'unit');
+    else if (el.name === 'unit_cost' || el.dataset.total === 'cost') syncPricePair(row, 'cost', el.dataset.total ? 'total' : 'unit');
+  }
   if (step === 3) refreshMeta();
 });
 document.getElementById('saleForm').addEventListener('focusout', (event) => {
-  if (event.target && event.target.name === 'qty') paintQty(event.target, true);
+  if (event.target && event.target.name === 'qty') {
+    paintQty(event.target, true);
+    const row = event.target.closest('#items [data-row]');
+    if (row) syncRowPrices(row);
+  }
 });
 function lineFieldEmpty(el) {
   if (!el) return true;
@@ -819,6 +956,7 @@ function markEmptyPayments() {
 
 document.getElementById('saleForm').addEventListener('submit', (event) => {
   document.querySelectorAll('#saleForm [name="qty"]').forEach((el) => paintQty(el, true));
+  document.querySelectorAll('#items [data-row]').forEach(syncRowPrices);
   const defer = document.querySelector('#saleForm [name="defer"]');
   if (defer && defer.checked) return;
   document.querySelectorAll('#items .is-gap, #pays .is-gap').forEach((el) => el.classList.remove('is-gap'));
@@ -1282,7 +1420,11 @@ if (err) {
   else if (!step1Gap && invoiceGap) start = 2;
 }
 showStep(start, false);
+syncChecks();
+const settlementPick = document.querySelector('#saleForm [name="settlement"]');
+if (settlementPick) settlementPick.addEventListener('change', syncChecks);
 syncMoney(document.getElementById('saleForm'));
+document.querySelectorAll('#items [data-row]').forEach(seedRowPrices);
 refreshMeta();
 </script>
 {% endblock %}
