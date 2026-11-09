@@ -12,6 +12,7 @@ from .jalali import (
 )
 from .levels import level_for
 from .models import Check, Customer, Invoice, InvoiceLine, Operator, Payment
+from .stats import sync_settlement_status
 from .perms import set_membership
 
 GENERAL_EXPERT = 'عمومی'
@@ -442,6 +443,7 @@ def import_workbook(source):
             if number in parsed['commissions']:
                 invoice.commission_paid = parsed['commissions'][number]
                 invoice.save(update_fields=['commission_paid'])
+            sync_settlement_status(invoice)
         _assign_experts(touched)
     return {
         'invoices_created': fresh,

@@ -119,6 +119,44 @@ class InvoiceEditTests(TestCase):
         self.assertEqual((kept.amount, kept.status, kept.number), (1600, 'وصول‌شده', '55'))
         self.assertTrue(self.invoice.checks.filter(number='77', amount=200).exists())
 
+    def test_covered_sale_becomes_settled(self):
+        response = self._post(
+            pay_amount=['500'],
+            pay_method=['شبا'],
+            pay_date=['1404/10/13'],
+            pay_note=['پیش'],
+            chk_id=[str(self.check.pk)],
+            chk_number=['55'],
+            chk_amount=['1500'],
+            chk_date=['1404/11/01'],
+            chk_status=['وصول‌شده'],
+            chk_note=['ملت'],
+        )
+        self.assertEqual(response.status_code, 302)
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.status, 'تسویه شده')
+
+    def test_uncovered_settled_invoice_becomes_partial(self):
+        self.invoice.status = 'تسویه شده'
+        self.invoice.save(update_fields=['status'])
+        response = self._post()
+        self.assertEqual(response.status_code, 302)
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.status, 'تسویه ناقص')
+
+    def test_cancelled_invoice_stays_cancelled_when_covered(self):
+        self.invoice.status = 'لغو شده'
+        self.invoice.save(update_fields=['status'])
+        response = self._post(
+            pay_amount=['2000'],
+            pay_method=['شبا'],
+            pay_date=['1404/10/13'],
+            pay_note=['کامل'],
+        )
+        self.assertEqual(response.status_code, 302)
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.status, 'لغو شده')
+
     def test_clearing_rows_removes_payments_and_checks(self):
         response = self._post()
         self.assertEqual(response.status_code, 302)

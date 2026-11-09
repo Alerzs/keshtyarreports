@@ -105,7 +105,7 @@ def check_status_tone(status):
     if 'برگشت' in compact or compact == 'سررسیدگذشته':
         return 'bg-red-50 text-red-600'
     return 'bg-amber-50 text-amber-700'
-INVOICE_STATUSES = ['تکمیل شده', 'در حال پیگیری', 'تسویه نشده', 'معلق', 'لغو شده']
+INVOICE_STATUSES = ['تکمیل شده', 'در حال پیگیری', 'تسویه شده', 'تسویه نشده', 'معلق', 'لغو شده']
 
 # وزن تکمیل پرونده؛ کد ملی از بقیه سنگین‌تر است.
 PROFILE_WEIGHTS = {

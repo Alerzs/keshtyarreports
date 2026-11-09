@@ -2,6 +2,7 @@
 from collections import defaultdict
 from datetime import date, timedelta
 
+from django.db.models import Sum
 from django.utils import timezone
 
 from .access import visible_invoices
@@ -17,7 +18,7 @@ from .jalali import (
     to_fa_digits,
 )
 from .levels import BASE_SALARY, SPECIALIST_LEVELS, level_for, next_level, payout, perks_up_to
-from .models import Operator
+from .models import Check, Operator, Payment
 
 TICKET_BUCKETS = [
     ('زیر ۵۰ میلیون', 0, 50_000_000),
@@ -50,6 +51,36 @@ def received_of(invoice):
 
 def outstanding_of(invoice):
     return max(0, int(invoice.sale_amount or 0) - int(received_of(invoice)))
+
+
+def fresh_received(invoice):
+    """پرداخت‌ها و چک‌های وصول‌شده را مستقیم از پایگاه می‌خواند، نه از کش رابطه."""
+    paid = Payment.objects.filter(invoice_id=invoice.pk).aggregate(total=Sum('amount'))['total'] or 0
+    cleared = sum(
+        int(check.amount or 0)
+        for check in Check.objects.filter(invoice_id=invoice.pk)
+        if check_is_cleared(check.status)
+    )
+    return int(paid) + cleared
+
+
+def sync_settlement_status(invoice):
+    """اگر پرداخت به‌علاوه چک وصول‌شده به مبلغ فروش برسد، وضعیت تسویه شده می‌شود."""
+    if invoice.status == 'لغو شده':
+        return False
+    sale = int(invoice.sale_amount or 0)
+    covered = sale > 0 and fresh_received(invoice) >= sale
+    if covered:
+        nxt = 'تسویه شده'
+    elif invoice.status == 'تسویه شده':
+        nxt = 'تسویه ناقص'
+    else:
+        return False
+    if invoice.status == nxt:
+        return False
+    invoice.status = nxt
+    invoice.save(update_fields=['status'])
+    return True
 
 
 def cash_due_of(invoice):
@@ -195,6 +226,7 @@ def build_dashboard(user, range_key='all', person='', month='all', team_month='a
         {'key': 'collected', 'label': 'چک‌های وصول‌شده', 'value': collected, 'note': 'چک‌هایی که پولشان به حساب نشسته', 'tone': 'c2'},
         {'key': 'outstanding', 'label': 'مطالبات (نقدی و چکی)', 'value': outstanding, 'note': 'پولی که هنوز وصول نشده', 'tone': 'c3'},
         {'key': 'checks', 'label': 'مانده‌های چکی', 'value': check_due, 'note': 'چک‌هایی که هنوز وصول نشده', 'tone': 'c3'},
+        {'key': 'commission', 'label': 'پورسانت‌های پرداخت‌شده', 'value': _paid_commission(invoices), 'note': 'پورسانت فاکتورهایی که پرداخت شده', 'tone': 'c7'},
         {'key': 'profit', 'label': 'سود کل ناخالص', 'value': total_sales - total_cost, 'note': 'مابه‌التفاوت فروش و خرید', 'tone': 'c4'},
         {'key': 'count', 'label': 'تعداد فاکتورها', 'value': len(invoices), 'note': 'مجموع سفارشات موفق', 'tone': 'c6', 'plain': True},
         {'key': 'loyal', 'label': 'تعداد مشتریان وفادار', 'value': loyal_count, 'note': 'مشتری با بیش از یک فاکتور', 'tone': 'c5', 'plain': True},
@@ -554,6 +586,22 @@ def build_dashboard(user, range_key='all', person='', month='all', team_month='a
         'kpi_tables': _kpi_details(invoices, repeat_ids),
         'base_salary': BASE_SALARY,
     }
+
+
+def _paid_commission(invoices):
+    """جمع پورسانت پرداخت‌شده، با همان درصد ماهانهٔ صفحهٔ پورسانت‌ها."""
+    monthly = defaultdict(int)
+    for invoice in invoices:
+        if invoice.expert_id and invoice.sold_on:
+            monthly[(invoice.expert_id, month_key(invoice.sold_on))] += invoice.profit
+    total = 0
+    for invoice in invoices:
+        if not invoice.commission_paid or not invoice.sold_on:
+            continue
+        level = level_for(monthly[(invoice.expert_id, month_key(invoice.sold_on))]) if invoice.expert_id else None
+        rate = level['rate'] if level else 0
+        total += int(invoice.profit * rate)
+    return total
 
 
 def _sum_monthly(months):

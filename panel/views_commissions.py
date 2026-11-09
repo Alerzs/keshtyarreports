@@ -1,4 +1,4 @@
-"""فهرست پورسانت فاکتورها برای گروه مالی."""
+"""فهرست پورسانت فاکتورها. برای مدیر و گروه مالی باز است."""
 from collections import defaultdict
 from urllib.parse import urlencode, urlparse
 

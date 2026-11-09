@@ -11,7 +11,7 @@ from .credit import CHECK_STATES, INVOICE_STATUSES, PAY_METHODS, SETTLEMENTS
 from .decorators import page_required
 from .jalali import parse_jalali, parse_money, to_en_digits, to_fa_digits
 from .models import Check, Payment
-from .stats import cash_due_of, cash_of, collected_of, outstanding_of, received_of
+from .stats import cash_due_of, cash_of, collected_of, outstanding_of, received_of, sync_settlement_status
 
 PAGE_SIZE = 10
 SORTS = (
@@ -274,6 +274,7 @@ def add_payment(request, pk):
         )
     else:
         Payment.objects.create(invoice=invoice, amount=amount, method=method, paid_on=paid_on, note=note)
+        sync_settlement_status(invoice)
         messages.success(request, 'پرداخت ثبت شد.')
     return redirect('sale_detail', pk=invoice.pk)
 
@@ -289,5 +290,6 @@ def set_check_status(request, pk, check_pk):
     else:
         check.status = status
         check.save(update_fields=['status'])
+        sync_settlement_status(invoice)
         messages.success(request, 'وضعیت چک ذخیره شد.')
     return redirect('sale_detail', pk=invoice.pk)

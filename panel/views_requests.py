@@ -24,6 +24,7 @@ from .models import (
     Check, Customer, CustomerDocument, Invoice, InvoiceLine, Operator, Payment, SaleDocument, SaleRequest,
 )
 from .perms import can_review
+from .stats import sync_settlement_status
 
 PAGE_SIZE = 20
 
@@ -756,6 +757,7 @@ def _approve_request(request, req, note, check_sale):
                 status=canonical_check_status(getattr(chk, 'status', '')),
                 note=chk.bank,
             )
+        sync_settlement_status(invoice)
         req.review_note = note
         req.reviewed_by = request.user
         req.reviewed_at = timezone.now()

@@ -11,6 +11,7 @@ from .access import seller_choices, visible_customers, visible_invoices
 from .credit import CHECK_STATES, PAY_METHODS, SETTLEMENTS
 from .decorators import page_required
 from .jalali import parse_jalali, parse_money, to_en_digits
+from .stats import sync_settlement_status
 from .models import Check, Invoice, InvoiceLine, Payment
 
 
@@ -382,6 +383,7 @@ def _apply_invoice(invoice, cleaned):
     for pk, chk in existing.items():
         if pk not in kept:
             chk.delete()
+    sync_settlement_status(invoice)
 
 
 def _context(request, selected_invoice=None, invoice_form=None, invoice_errors=None, tab=None):
