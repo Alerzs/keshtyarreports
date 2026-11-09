@@ -14,6 +14,17 @@ from .models import Check, Payment
 from .stats import cash_due_of, cash_of, collected_of, outstanding_of, received_of
 
 PAGE_SIZE = 10
+SORTS = (
+    ('number', 'شماره فاکتور', False),
+    ('customer', 'نام مشتری', False),
+    ('expert', 'مسئول فروش', False),
+    ('sale', 'مبلغ کل فروش', True),
+    ('cost', 'مبلغ کل خرید', True),
+    ('cash', 'جمع دریافتی نقدی', True),
+    ('check', 'جمع دریافتی چکی', True),
+    ('cash_due', 'مانده حساب نقدی', True),
+    ('check_due', 'مانده حساب چکی', True),
+)
 
 
 def _money(value):
@@ -72,6 +83,57 @@ def _match(row, query):
     return _fold(query) in haystack
 
 
+def _number_key(row):
+    number = str(row['invoice'].number)
+    if number.isdigit():
+        return (0, int(number))
+    return (1, _fold(number))
+
+
+def _sort_value(row, key):
+    invoice = row['invoice']
+    if key == 'number':
+        return _number_key(row)
+    if key == 'customer':
+        return _fold(invoice.customer.name)
+    if key == 'expert':
+        return _fold(invoice.expert_label)
+    field = {'cash': 'cash_received', 'check': 'check_received'}.get(key, key)
+    return int(row.get(field) or 0)
+
+
+def _apply_sort(rows, key, direction):
+    known = {item[0]: item[2] for item in SORTS}
+    if key not in known:
+        return rows, '', ''
+    if direction not in {'asc', 'desc'}:
+        direction = 'desc' if known[key] else 'asc'
+    rows.sort(key=lambda row: (_sort_value(row, key), row['invoice'].pk), reverse=direction == 'desc')
+    return rows, key, direction
+
+
+def _sort_columns(params, key, direction):
+    columns = []
+    for name, label, numeric in SORTS:
+        if key == name:
+            nxt = 'asc' if direction == 'desc' else 'desc'
+            mark = '▲' if direction == 'asc' else '▼'
+            aria = 'ascending' if direction == 'asc' else 'descending'
+        else:
+            nxt = 'desc' if numeric else 'asc'
+            mark = '↕'
+            aria = 'none'
+        query = {**params, 'sort': name, 'dir': nxt}
+        columns.append({
+            'label': label,
+            'href': '?' + urlencode(query),
+            'active': key == name,
+            'mark': mark,
+            'aria': aria,
+        })
+    return columns
+
+
 @page_required('sales')
 def sales(request):
     query = (request.GET.get('q') or '').strip()
@@ -109,24 +171,36 @@ def sales(request):
         rows = [row for row in rows if row['cash_due'] > 0 or row['check_due'] > 0]
     elif balance == 'cleared':
         rows = [row for row in rows if row['cash_due'] <= 0 and row['check_due'] <= 0]
+    sort_key = request.GET.get('sort') or ''
+    sort_dir = request.GET.get('dir') or ''
+    rows, sort_key, sort_dir = _apply_sort(rows, sort_key, sort_dir)
     filtered = bool(query or settlement or status or balance or expert_id)
     page_size = (len(rows) or 1) if filtered else PAGE_SIZE
     page_number = 1 if filtered else (request.GET.get('page') or 1)
     page = Paginator(rows, page_size).get_page(page_number)
-    filters = urlencode({
-        key: value for key, value in {
-            'q': query,
-            'settlement': settlement,
-            'status': status,
-            'balance': balance,
-            'expert': expert_id,
-        }.items() if value
-    })
+    kept = {
+        'q': query,
+        'settlement': settlement,
+        'status': status,
+        'balance': balance,
+        'expert': expert_id,
+        'sort': sort_key,
+        'dir': sort_dir,
+    }
+    filters = urlencode({name: value for name, value in kept.items() if value})
+    columns = _sort_columns(
+        {name: value for name, value in kept.items() if value and name not in {'sort', 'dir'}},
+        sort_key,
+        sort_dir,
+    )
     return render(request, 'panel/sales.html', {
         'rows': page.object_list,
         'page': page,
         'total': len(rows),
         'filters': filters,
+        'columns': columns,
+        'sort': sort_key,
+        'sort_dir': sort_dir,
         'query': query,
         'settlement': settlement,
         'status': status,

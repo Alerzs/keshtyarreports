@@ -120,6 +120,7 @@ class Invoice(models.Model):
     settlement = models.CharField('تسویه', max_length=20, default='نقدی')
     status = models.CharField('وضعیت', max_length=40, default='تکمیل شده')
     note = models.TextField('یادداشت', blank=True)
+    sale_amount = models.BigIntegerField('مبلغ کل فروش', default=0)
     purchase_amount = models.BigIntegerField('مبلغ خرید', default=0)
     commission_paid = models.BooleanField('پورسانت پرداخت شده', default=False)
     created_at = models.DateTimeField('ایجاد', auto_now_add=True)
@@ -132,29 +133,17 @@ class Invoice(models.Model):
     def __str__(self):
         return self.number
 
-    def totals(self):
-        cached = getattr(self, '_totals', None)
+    @property
+    def cost_amount(self):
+        cached = getattr(self, '_cost_amount', None)
         if cached is None:
-            sale = cost = 0
-            for line in self.lines.all():
-                sale += int(line.qty * line.unit_price)
-                cost += int(line.qty * line.unit_cost)
-            cached = (sale, cost)
-            self._totals = cached
+            cached = sum(int(line.qty * line.unit_cost) for line in self.lines.all())
+            self._cost_amount = cached
         return cached
 
     @property
-    def sale_amount(self):
-        return self.totals()[0]
-
-    @property
-    def cost_amount(self):
-        return self.totals()[1]
-
-    @property
     def profit(self):
-        sale, cost = self.totals()
-        return sale - cost
+        return int(self.sale_amount or 0) - self.cost_amount
 
     @property
     def expert_label(self):

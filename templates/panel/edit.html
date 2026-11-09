@@ -52,17 +52,18 @@
   .edit-head p { margin-top: .2rem; font-size: 12px; font-weight: 600; color: #64748b; line-height: 1.7; }
   #invoiceForm .label, #customerForm .label { margin-bottom: .3rem; font-size: 12px; color: #64748b; }
   #invoiceForm .field, #customerForm .field { padding-top: .6rem; padding-bottom: .6rem; background: #fff; }
-  .edit-grid, .line-grid, .pair-grid, .finder { display: grid; gap: .75rem; }
+  .edit-grid, .pair-grid, .finder { display: grid; gap: .75rem; }
   .finder { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+  .item-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+  .item-prices { display: grid; gap: .5rem; margin-top: .5rem; }
+  #invoiceItems input.is-derived { background: #f1f5f9; color: #475569; cursor: default; }
+  #invoiceItems [data-toman-words] { margin-top: .25rem; font-size: 11px; font-weight: 800; line-height: 1.7; color: #0e7490; }
   @media (min-width: 760px) {
     .edit-grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .edit-grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .span-all { grid-column: 1 / -1; }
     .edit-save .btn,
     .edit-save form { width: auto; }
-  }
-  @media (min-width: 980px) {
-    .line-grid { grid-template-columns: minmax(0, 1.6fr) minmax(5rem, .55fr) minmax(0, 1fr) minmax(0, 1fr); align-items: end; }
   }
   @media (min-width: 1180px) {
     .pair-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
@@ -262,7 +263,7 @@
         <div class="edit-head">
           <div>
             <h3>اقلام فاکتور</h3>
-            <p>مبالغ به تومان و برای هر واحد است</p>
+            <p>مبالغ به تومان است. بعد از تعداد، قیمت واحد یا قیمت کل را وارد کنید تا دیگری حساب شود.</p>
           </div>
           <button type="button" class="btn btn-outline" data-add="invoiceItems">+ افزودن قلم</button>
         </div>
@@ -270,7 +271,7 @@
           {% for line in invoice_form.lines %}
           <div data-row class="row-card">
             <div class="row-top"><span class="text-xs font-extrabold text-muted" data-label>قلم</span><button type="button" class="text-xs font-extrabold text-red-500" data-remove>حذف</button></div>
-            <div class="line-grid">
+            <div class="item-grid">
               <div>
                 <label class="label">کالا</label>
                 <select name="product" class="field">
@@ -283,9 +284,17 @@
                   {% endif %}
                 </select>
               </div>
-              <div><label class="label">تعداد</label><input name="qty" class="field" dir="ltr" inputmode="decimal" value="{{ line.qty }}"></div>
-              <div><label class="label">قیمت فروش هر واحد</label><input name="unit_price" class="field" dir="ltr" inputmode="numeric" value="{{ line.unit_price }}"></div>
-              <div><label class="label">قیمت خرید هر واحد</label><input name="unit_cost" class="field" dir="ltr" inputmode="numeric" value="{{ line.unit_cost }}"></div>
+              <div><label class="label">تعداد</label><input name="qty" class="field" dir="ltr" inputmode="decimal" autocomplete="off" value="{{ line.qty }}"></div>
+            </div>
+            <div class="item-prices">
+              <div class="item-grid">
+                <div><label class="label">قیمت فروش هر واحد</label><input name="unit_price" class="field" dir="ltr" inputmode="numeric" autocomplete="off" value="{{ line.unit_price }}"></div>
+                <div><label class="label">قیمت فروش کل</label><input data-toman data-total="sale" class="field" dir="ltr" inputmode="numeric" autocomplete="off"></div>
+              </div>
+              <div class="item-grid">
+                <div><label class="label">قیمت خرید هر واحد</label><input name="unit_cost" class="field" dir="ltr" inputmode="numeric" autocomplete="off" value="{{ line.unit_cost }}"></div>
+                <div><label class="label">قیمت خرید کل</label><input data-toman data-total="cost" class="field" dir="ltr" inputmode="numeric" autocomplete="off"></div>
+              </div>
             </div>
           </div>
           {% endfor %}
@@ -372,6 +381,238 @@
     return String(n).replace(/\d/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[digit]);
   }
 
+  const MONEY_ONES = ['', 'یک', 'دو', 'سه', 'چهار', 'پنج', 'شش', 'هفت', 'هشت', 'نه'];
+  const MONEY_TEENS = ['ده', 'یازده', 'دوازده', 'سیزده', 'چهارده', 'پانزده', 'شانزده', 'هفده', 'هجده', 'نوزده'];
+  const MONEY_TENS = ['', '', 'بیست', 'سی', 'چهل', 'پنجاه', 'شصت', 'هفتاد', 'هشتاد', 'نود'];
+  const MONEY_HUNDREDS = ['', 'صد', 'دویست', 'سیصد', 'چهارصد', 'پانصد', 'ششصد', 'هفتصد', 'هشتصد', 'نهصد'];
+  const MONEY_SCALES = ['', 'هزار', 'میلیون', 'میلیارد', 'بیلیون', 'بیلیارد', 'تریلیون'];
+
+  function isItemMoney(el) {
+    return !!(el && el.tagName === 'INPUT' && el.closest('#invoiceItems') && (
+      el.name === 'unit_price' || el.name === 'unit_cost' || el.hasAttribute('data-total')
+    ));
+  }
+
+  function moneyDigits(value) {
+    const persian = '۰۱۲۳۴۵۶۷۸۹';
+    const arabic = '٠١٢٣٤٥٦٧٨٩';
+    let out = '';
+    for (const ch of String(value ?? '')) {
+      if (ch >= '0' && ch <= '9') out += ch;
+      else if (persian.includes(ch)) out += String(persian.indexOf(ch));
+      else if (arabic.includes(ch)) out += String(arabic.indexOf(ch));
+    }
+    return out.replace(/^0+(?=\d)/, '');
+  }
+
+  function threeDigitWords(n) {
+    const parts = [];
+    const hundreds = Math.floor(n / 100);
+    const rest = n % 100;
+    if (hundreds) parts.push(MONEY_HUNDREDS[hundreds]);
+    if (rest >= 10 && rest < 20) parts.push(MONEY_TEENS[rest - 10]);
+    else {
+      const tens = Math.floor(rest / 10);
+      const ones = rest % 10;
+      if (tens) parts.push(MONEY_TENS[tens]);
+      if (ones) parts.push(MONEY_ONES[ones]);
+    }
+    return parts.join(' و ');
+  }
+
+  function moneyWords(digits) {
+    if (!digits) return '';
+    const padded = digits.padStart(Math.ceil(digits.length / 3) * 3, '0');
+    const groups = padded.match(/\d{3}/g) || [];
+    const parts = [];
+    groups.forEach((group, index) => {
+      const n = Number(group);
+      if (!n) return;
+      const scale = MONEY_SCALES[groups.length - 1 - index] || '';
+      const text = threeDigitWords(n);
+      parts.push(scale ? text + ' ' + scale : text);
+    });
+    return parts.join(' و ');
+  }
+
+  function paintMoney(el) {
+    if (!isItemMoney(el)) return;
+    let digits = moneyDigits(el.value);
+    if (document.activeElement === el && !el.readOnly) {
+      if (el.name === 'unit_price' || el.name === 'unit_cost') digits = digits.slice(0, 9);
+      else if (el.dataset.total) digits = digits.slice(0, 12);
+    }
+    const shown = digits ? fa(digits.replace(/\B(?=(\d{3})+(?!\d))/g, '٬')) : '';
+    const caret = el.selectionStart;
+    const before = caret == null ? digits.length : moneyDigits(el.value.slice(0, caret)).length;
+    if (el.value !== shown) {
+      el.value = shown;
+      if (document.activeElement === el && caret != null) {
+        let seen = 0;
+        let pos = shown.length;
+        for (let i = 0; i < shown.length; i++) {
+          if (moneyDigits(shown[i])) seen += 1;
+          if (seen >= before) {
+            pos = i + 1;
+            break;
+          }
+        }
+        if (!before) pos = 0;
+        el.setSelectionRange(pos, pos);
+      }
+    }
+    const label = el.parentElement && el.parentElement.querySelector(':scope > label');
+    if (label && !label.querySelector('[data-toman-unit]') && !label.textContent.includes('تومان')) {
+      const unit = document.createElement('span');
+      unit.dataset.tomanUnit = '';
+      unit.className = 'font-semibold text-muted';
+      unit.textContent = ' تومان';
+      label.append(unit);
+    }
+    let words = el.nextElementSibling;
+    if (!words || !words.hasAttribute('data-toman-words')) {
+      words = document.createElement('p');
+      words.setAttribute('data-toman-words', '');
+      el.after(words);
+    }
+    const text = digits ? moneyWords(digits) + ' تومان' : '';
+    words.textContent = text;
+    words.hidden = !text;
+  }
+
+  function sanitizeQty(value) {
+    const persian = '۰۱۲۳۴۵۶۷۸۹';
+    const arabic = '٠١٢٣٤٥٦٧٨٩';
+    let out = '';
+    let dot = false;
+    let frac = 0;
+    for (const ch of String(value ?? '')) {
+      let digit = '';
+      if (ch >= '0' && ch <= '9') digit = ch;
+      else if (persian.includes(ch)) digit = String(persian.indexOf(ch));
+      else if (arabic.includes(ch)) digit = String(arabic.indexOf(ch));
+      if (digit) {
+        if (dot) {
+          if (frac >= 2) continue;
+          frac += 1;
+        }
+        out += digit;
+        continue;
+      }
+      if ((ch === '.' || ch === '٫') && !dot && out) {
+        dot = true;
+        out += '.';
+      }
+    }
+    return out;
+  }
+
+  function paintQty(el, commit) {
+    if (!el || el.tagName !== 'INPUT' || el.name !== 'qty' || !el.closest('#invoiceItems')) return;
+    const caret = el.selectionStart;
+    const raw = el.value;
+    let shown = sanitizeQty(raw);
+    const typing = !commit && (shown === '' || shown.endsWith('.'));
+    if (!typing) {
+      const n = Number(shown);
+      if (!shown || !Number.isFinite(n) || n < 1) shown = '1';
+      else if (commit) shown = String(n);
+    }
+    if (el.value !== shown) {
+      const before = caret == null ? shown.length : sanitizeQty(raw.slice(0, caret)).length;
+      el.value = shown;
+      if (document.activeElement === el && caret != null) el.setSelectionRange(before, before);
+    }
+  }
+
+  function syncMoney(root) {
+    if (!root) return;
+    root.querySelectorAll('input').forEach((el) => {
+      if (el.name === 'qty') paintQty(el, true);
+      else if (isItemMoney(el)) paintMoney(el);
+    });
+  }
+
+  function qtyHundredths(row) {
+    const raw = sanitizeQty(row.querySelector('[name="qty"]').value);
+    if (!raw || raw === '.') return 0;
+    const [whole, frac = ''] = raw.split('.');
+    if (!whole) return 0;
+    return Number(whole) * 100 + Number((frac + '00').slice(0, 2));
+  }
+
+  function pricePair(row, kind) {
+    const unitName = kind === 'sale' ? 'unit_price' : 'unit_cost';
+    return {
+      unit: row.querySelector('[name="' + unitName + '"]'),
+      total: row.querySelector('[data-total="' + kind + '"]'),
+      key: kind === 'sale' ? 'saleSource' : 'costSource',
+    };
+  }
+
+  function setDerived(el, locked) {
+    if (!el) return;
+    el.readOnly = locked;
+    el.classList.toggle('is-derived', locked);
+    el.title = locked ? 'این مقدار از روی تعداد و فیلد دیگر حساب شده است.' : '';
+  }
+
+  function writeMoney(el, amount) {
+    if (!el) return;
+    el.value = amount == null || amount === '' ? '' : String(Math.max(0, Math.round(amount)));
+    paintMoney(el);
+  }
+
+  function syncPricePair(row, kind, edited) {
+    const pair = pricePair(row, kind);
+    if (!pair.unit || !pair.total) return;
+    const sourceEl = edited === 'total' ? pair.total : edited === 'unit' ? pair.unit : null;
+    if (sourceEl) {
+      if (!moneyDigits(sourceEl.value)) {
+        delete row.dataset[pair.key];
+        writeMoney(edited === 'unit' ? pair.total : pair.unit, '');
+        setDerived(pair.unit, false);
+        setDerived(pair.total, false);
+        return;
+      }
+      row.dataset[pair.key] = edited;
+    }
+    const source = row.dataset[pair.key];
+    const qty = qtyHundredths(row);
+    if (!source || !qty) return;
+    if (source === 'unit') {
+      writeMoney(pair.total, Number(moneyDigits(pair.unit.value) || '0') * qty / 100);
+      setDerived(pair.total, true);
+      setDerived(pair.unit, false);
+    } else {
+      writeMoney(pair.unit, Number(moneyDigits(pair.total.value) || '0') * 100 / qty);
+      setDerived(pair.unit, true);
+      setDerived(pair.total, false);
+    }
+  }
+
+  function syncRowPrices(row) {
+    syncPricePair(row, 'sale');
+    syncPricePair(row, 'cost');
+  }
+
+  function seedRowPrices(row) {
+    ['sale', 'cost'].forEach((kind) => {
+      const pair = pricePair(row, kind);
+      if (pair.unit && moneyDigits(pair.unit.value)) syncPricePair(row, kind, 'unit');
+    });
+  }
+
+  function clearPriceLocks(row) {
+    ['sale', 'cost'].forEach((kind) => {
+      const pair = pricePair(row, kind);
+      setDerived(pair.unit, false);
+      setDerived(pair.total, false);
+    });
+    delete row.dataset.saleSource;
+    delete row.dataset.costSource;
+  }
+
   function paintLabels() {
     groups.forEach(([id, label]) => {
       const box = document.getElementById(id);
@@ -397,6 +638,10 @@
     if (!row) return;
     const clone = row.cloneNode(true);
     clearRow(clone);
+    if (id === 'invoiceItems') {
+      clearPriceLocks(clone);
+      syncMoney(clone);
+    }
     box.appendChild(clone);
     paintLabels();
   }
@@ -405,8 +650,13 @@
     const row = btn.closest('[data-row]');
     const box = row && row.parentElement;
     if (!box) return;
-    if (box.querySelectorAll('[data-row]').length === 1) clearRow(row);
-    else row.remove();
+    if (box.querySelectorAll('[data-row]').length === 1) {
+      clearRow(row);
+      if (box.id === 'invoiceItems') {
+        clearPriceLocks(row);
+        syncMoney(row);
+      }
+    } else row.remove();
     paintLabels();
   }
 
@@ -416,7 +666,33 @@
     const remove = event.target.closest('[data-remove]');
     if (remove) removeRow(remove);
   });
+  form.addEventListener('input', (event) => {
+    const el = event.target;
+    if (!el || !el.closest) return;
+    if (el.name === 'qty') paintQty(el, false);
+    if (isItemMoney(el)) paintMoney(el);
+    const row = el.closest('#invoiceItems [data-row]');
+    if (!row) return;
+    if (el.name === 'qty') syncRowPrices(row);
+    else if (el.name === 'unit_price' || el.dataset.total === 'sale') syncPricePair(row, 'sale', el.dataset.total ? 'total' : 'unit');
+    else if (el.name === 'unit_cost' || el.dataset.total === 'cost') syncPricePair(row, 'cost', el.dataset.total ? 'total' : 'unit');
+  });
+  form.addEventListener('focusout', (event) => {
+    const el = event.target;
+    if (!el || el.name !== 'qty') return;
+    paintQty(el, true);
+    const row = el.closest('#invoiceItems [data-row]');
+    if (row) syncRowPrices(row);
+  });
+  form.addEventListener('submit', () => {
+    document.querySelectorAll('#invoiceItems [name="qty"]').forEach((el) => paintQty(el, true));
+    document.querySelectorAll('#invoiceItems [data-row]').forEach(syncRowPrices);
+  });
   paintLabels();
+  document.querySelectorAll('#invoiceItems [data-row]').forEach((row) => {
+    seedRowPrices(row);
+    syncMoney(row);
+  });
 })();
 </script>
 {% endblock %}

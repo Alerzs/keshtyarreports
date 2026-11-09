@@ -203,40 +203,6 @@
     </div>
   </article>
 </section>
-<article class="card mt-5 p-6">
-  <div class="mb-4">
-    <h2 class="text-lg font-extrabold">مشتریان وفادار و جدید</h2>
-    <p class="mt-1 text-[13px] font-semibold text-muted">سهم فروش و سود هر کارشناس از مشتری وفادار و مشتری تازه‌وارد</p>
-  </div>
-  <div class="overflow-auto rounded-2xl border border-line">
-    <table class="w-full border-collapse text-center text-[13px]">
-      <thead class="bg-canvas text-muted"><tr>
-        <th class="px-4 py-3 font-extrabold">کارشناس</th>
-        <th class="px-4 py-3 font-extrabold">فروش وفادار</th>
-        <th class="px-4 py-3 font-extrabold">فروش جدید</th>
-        <th class="px-4 py-3 font-extrabold">سود وفادار</th>
-        <th class="px-4 py-3 font-extrabold">سود جدید</th>
-        <th class="px-4 py-3 font-extrabold">معامله وفادار</th>
-        <th class="px-4 py-3 font-extrabold">معامله جدید</th>
-      </tr></thead>
-      <tbody>
-        {% for row in team_rows %}
-        <tr class="border-t border-line hover:bg-canvas">
-          <td class="px-4 py-3 font-extrabold">{{ row.name }}</td>
-          <td class="whitespace-nowrap px-4 py-3">{{ row.salesRepeat|money:money_unit }}</td>
-          <td class="whitespace-nowrap px-4 py-3">{{ row.salesOnce|money:money_unit }}</td>
-          <td class="whitespace-nowrap px-4 py-3">{{ row.profitRepeat|money:money_unit }}</td>
-          <td class="whitespace-nowrap px-4 py-3">{{ row.profitOnce|money:money_unit }}</td>
-          <td class="px-4 py-3">{{ row.dealsRepeat|fa }}</td>
-          <td class="px-4 py-3">{{ row.dealsOnce|fa }}</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="7" class="px-4 py-8 text-center text-muted">کارشناسی در این بازه نیست.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</article>
 {% endif %}
 
 {% if tab == 'finance' %}
@@ -285,6 +251,7 @@
     </nav>
     {% endif %}
   </article>
+  {% include "panel/partials/chart.html" with chart_id="checkChart" title="سررسید چک‌ها" subtitle="در هر تاریخ، نام و مبلغ چکی که آن روز سررسید می‌شود" layout="calendar" span="lg:col-span-2" %}
   {% if 'sales' in crm_pages %}
   {% include "panel/partials/chart.html" with chart_id="invoiceChart" title="وصول و مانده فاکتورها" subtitle="هر میله یک فاکتور است؛ پایین وصول‌شده و بالا باقی‌مانده" hint="روی هر میله بزنید تا همان فاکتور در فروش‌ها باز شود." box="h-[340px]" span="lg:col-span-2" %}
   {% else %}
@@ -292,7 +259,6 @@
   {% endif %}
   {% include "panel/partials/chart.html" with chart_id="financeChart" title="نسبت وصول به مطالبات" subtitle="سهم پول وصول‌شده از کل فروش دوره" box="h-[300px]" layout="share" click_customers=True %}
   {% include "panel/partials/chart.html" with chart_id="methodChart" title="تفکیک روش‌های واریزی" subtitle="سهم هر روش پرداخت" box="h-[300px]" layout="share" click_customers=True %}
-  {% include "panel/partials/chart.html" with chart_id="checkChart" title="سررسید چک‌ها" subtitle="در هر تاریخ، نام و مبلغ چکی که آن روز سررسید می‌شود" layout="calendar" span="lg:col-span-2" %}
 </section>
 {% endif %}
 

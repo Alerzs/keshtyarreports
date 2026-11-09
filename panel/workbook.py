@@ -215,6 +215,7 @@ def _parse(book):
             'city': _text(row[5])[:80],
             'address': _text(row[6]),
             'settlement': _text(row[7]) or 'نقدی',
+            'sale': _money(row[8]),
             'purchase': _money(row[9]),
             'status': _text(row[13]) or 'تکمیل شده',
             'note': _text(row[14]),
@@ -402,6 +403,9 @@ def import_workbook(source):
                 'settlement': row['settlement'][:20],
                 'status': row['status'][:40],
                 'note': row['note'],
+                'sale_amount': row['sale'] or sum(
+                    int(line['qty'] * line['unit_price']) for line in parsed['items'].get(row['number'], ())
+                ),
                 'purchase_amount': row['purchase'],
             }
             if invoice is None:

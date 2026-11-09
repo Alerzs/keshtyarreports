@@ -13,6 +13,8 @@
 </header>
 
 <form method="get" action="{% url 'sales' %}" class="card mb-5 p-5">
+  {% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+  {% if sort_dir %}<input type="hidden" name="dir" value="{{ sort_dir }}">{% endif %}
   <div class="flex flex-wrap items-center gap-3">
     <input name="q" value="{{ query }}" placeholder="شماره فاکتور، نام مشتری یا مسئول فروش" class="field min-w-[220px] flex-1">
     <select name="settlement" class="field !w-auto" onchange="this.form.submit()" aria-label="تسویه">
@@ -40,15 +42,11 @@
   <table class="w-full min-w-[1280px] text-right text-[13px]">
     <thead class="bg-canvas text-muted">
       <tr>
-        <th class="whitespace-nowrap px-4 py-3 font-extrabold">شماره فاکتور</th>
-        <th class="whitespace-nowrap px-4 py-3 font-extrabold">نام مشتری</th>
-        <th class="whitespace-nowrap px-4 py-3 font-extrabold">مسئول فروش</th>
-        <th class="whitespace-nowrap px-4 py-3 font-extrabold">مبلغ کل فروش</th>
-        <th class="whitespace-nowrap px-4 py-3 font-extrabold">مبلغ کل خرید</th>
-        <th class="whitespace-nowrap px-4 py-3 font-extrabold">جمع دریافتی نقدی</th>
-        <th class="whitespace-nowrap px-4 py-3 font-extrabold">جمع دریافتی چکی</th>
-        <th class="whitespace-nowrap px-4 py-3 font-extrabold">مانده حساب نقدی</th>
-        <th class="whitespace-nowrap px-4 py-3 font-extrabold">مانده حساب چکی</th>
+        {% for col in columns %}
+        <th class="whitespace-nowrap px-4 py-3 font-extrabold" aria-sort="{{ col.aria }}">
+          <a href="{{ col.href }}" class="inline-flex items-center gap-1 {% if col.active %}text-primary{% else %}hover:text-ink{% endif %}">{{ col.label }}<span class="text-[10px] leading-none {% if not col.active %}opacity-50{% endif %}" aria-hidden="true">{{ col.mark }}</span></a>
+        </th>
+        {% endfor %}
       </tr>
     </thead>
     <tbody>

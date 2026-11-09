@@ -107,6 +107,7 @@ class InvoiceEditTests(TestCase):
         self.assertEqual(self.invoice.status, 'تکمیل شده')
         self.assertEqual(self.invoice.note, 'اصلاح شد')
         self.assertEqual(self.invoice.sold_on, parse_jalali('1404/10/12'))
+        self.assertEqual(self.invoice.sale_amount, 3800)
         self.assertEqual(self.invoice.purchase_amount, 900)
         self.assertEqual(
             list(self.invoice.lines.order_by('id').values_list('product_name', 'unit_price')),

@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.core.files.base import ContentFile
+from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -23,6 +24,8 @@ from .models import (
     Check, Customer, CustomerDocument, Invoice, InvoiceLine, Operator, Payment, SaleDocument, SaleRequest,
 )
 from .perms import can_review
+
+PAGE_SIZE = 20
 
 
 def _digits(value):
@@ -353,8 +356,10 @@ def request_list(request):
         qs = qs.filter(incomplete=True)
     elif status in {'pending', 'approved', 'rejected'}:
         qs = qs.filter(status=status)
+    page = Paginator(qs, PAGE_SIZE).get_page(request.GET.get('page') or 1)
     return render(request, 'panel/requests.html', {
-        'requests': qs,
+        'requests': page.object_list,
+        'page': page,
         'counts': counts,
         'status': status,
         'can_review': can_review(request.user),
@@ -725,6 +730,7 @@ def _approve_request(request, req, note, check_sale):
                         sold_on=req.sold_on, settlement=req.settlement,
                         status='در حال پیگیری' if req.settlement == 'قسطی' else 'تکمیل شده',
                         note=req.note,
+                        sale_amount=req.sale_amount,
                         purchase_amount=_purchase_total(req.line_list),
                     )
                 break

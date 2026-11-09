@@ -20,8 +20,8 @@
 </header>
 
 <section class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-  <article class="card p-4"><div class="text-xs font-bold text-muted">مبلغ فروش</div><b class="mt-1 block text-lg">{{ figures.sale|money:money_unit }}</b></article>
   <article class="card p-4"><div class="text-xs font-bold text-muted">مبلغ خرید</div><b class="mt-1 block text-lg">{{ figures.cost|money:money_unit }}</b></article>
+  <article class="card p-4"><div class="text-xs font-bold text-muted">مبلغ فروش</div><b class="mt-1 block text-lg">{{ figures.sale|money:money_unit }}</b></article>
   <article class="card p-4"><div class="text-xs font-bold text-muted">جمع دریافتی</div><b class="mt-1 block text-lg text-emerald-700">{{ figures.received|money:money_unit }}</b></article>
   <article class="card p-4"><div class="text-xs font-bold text-muted">باقی‌مانده حساب</div><b class="mt-1 block text-lg {% if figures.outstanding %}text-rose-600{% endif %}">{{ figures.outstanding|money:money_unit }}</b></article>
 </section>
@@ -54,13 +54,17 @@
   <article class="card p-5">
     <h2 class="text-lg font-extrabold">پرداخت نقدی</h2>
     <p class="mb-4 mt-1 text-sm font-semibold text-muted">مجموع پرداخت نقدی حداکثر به اندازه تفاضل مبلغ فاکتور و جمع چک‌هاست. سقف باقی‌مانده {{ figures.room|toman }} تومان است.</p>
+    <p class="mb-4 -mt-3 text-xs font-extrabold leading-5 text-primary" data-words="{{ figures.room }}" hidden></p>
     {% if payments %}
     <ul class="mb-4 space-y-2">
       {% for pay in payments %}
       <li class="rounded-xl bg-canvas px-3 py-2 text-sm">
         <div class="flex items-center justify-between gap-2">
           <span class="font-extrabold">{{ pay.method }}</span>
-          <span class="font-extrabold">{{ pay.amount|money:money_unit }}</span>
+          <span class="text-left">
+            <span class="block font-extrabold">{{ pay.amount|money:money_unit }}</span>
+            <span class="mt-0.5 block text-[11px] font-extrabold leading-5 text-primary" data-words="{{ pay.amount }}" hidden></span>
+          </span>
         </div>
         <div class="mt-1 text-xs font-semibold text-muted">{{ pay.paid_on|jdate }}{% if pay.note %} · {{ pay.note }}{% endif %}</div>
       </li>
@@ -73,7 +77,8 @@
     <form method="post" action="{% url 'sale_payment' invoice.pk %}" class="grid gap-3">{% csrf_token %}
       <div>
         <label class="label" for="pay-amount">مبلغ (تومان)</label>
-        <input id="pay-amount" name="amount" class="field" inputmode="numeric" placeholder="مثلاً ۱٬۰۰۰٬۰۰۰" required>
+        <input id="pay-amount" name="amount" class="field" dir="ltr" inputmode="numeric" autocomplete="off" placeholder="مثلاً ۱٬۰۰۰٬۰۰۰" required>
+        <p id="pay-amount-words" class="mt-1 text-xs font-extrabold leading-5 text-primary" hidden></p>
       </div>
       <div>
         <label class="label" for="pay-method">روش</label>
@@ -122,4 +127,96 @@
     {% endfor %}
   </article>
 </section>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const ONES = ['', 'یک', 'دو', 'سه', 'چهار', 'پنج', 'شش', 'هفت', 'هشت', 'نه'];
+  const TEENS = ['ده', 'یازده', 'دوازده', 'سیزده', 'چهارده', 'پانزده', 'شانزده', 'هفده', 'هجده', 'نوزده'];
+  const TENS = ['', '', 'بیست', 'سی', 'چهل', 'پنجاه', 'شصت', 'هفتاد', 'هشتاد', 'نود'];
+  const HUNDREDS = ['', 'صد', 'دویست', 'سیصد', 'چهارصد', 'پانصد', 'ششصد', 'هفتصد', 'هشتصد', 'نهصد'];
+  const SCALES = ['', 'هزار', 'میلیون', 'میلیارد', 'بیلیون', 'بیلیارد', 'تریلیون'];
+
+  function digitsOf(value) {
+    const persian = '۰۱۲۳۴۵۶۷۸۹';
+    const arabic = '٠١٢٣٤٥٦٧٨٩';
+    let out = '';
+    for (const ch of String(value ?? '')) {
+      if (ch >= '0' && ch <= '9') out += ch;
+      else if (persian.includes(ch)) out += String(persian.indexOf(ch));
+      else if (arabic.includes(ch)) out += String(arabic.indexOf(ch));
+    }
+    return out.replace(/^0+(?=\d)/, '');
+  }
+
+  function fa(value) {
+    return String(value).replace(/\d/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[digit]);
+  }
+
+  function threeDigits(n) {
+    const parts = [];
+    const hundreds = Math.floor(n / 100);
+    const rest = n % 100;
+    if (hundreds) parts.push(HUNDREDS[hundreds]);
+    if (rest >= 10 && rest < 20) parts.push(TEENS[rest - 10]);
+    else {
+      const tens = Math.floor(rest / 10);
+      const ones = rest % 10;
+      if (tens) parts.push(TENS[tens]);
+      if (ones) parts.push(ONES[ones]);
+    }
+    return parts.join(' و ');
+  }
+
+  function words(digits) {
+    if (!digits || digits === '0') return '';
+    const padded = digits.padStart(Math.ceil(digits.length / 3) * 3, '0');
+    const groups = padded.match(/\d{3}/g) || [];
+    const parts = [];
+    groups.forEach((group, index) => {
+      const n = Number(group);
+      if (!n) return;
+      const scale = SCALES[groups.length - 1 - index] || '';
+      const text = threeDigits(n);
+      parts.push(scale ? text + ' ' + scale : text);
+    });
+    return parts.join(' و ') + ' تومان';
+  }
+
+  document.querySelectorAll('[data-words]').forEach((el) => {
+    const text = words(digitsOf(el.getAttribute('data-words')));
+    el.textContent = text;
+    el.hidden = !text;
+  });
+
+  const amount = document.getElementById('pay-amount');
+  const amountWords = document.getElementById('pay-amount-words');
+  if (!amount || !amountWords) return;
+
+  function paintAmount() {
+    let digits = digitsOf(amount.value).slice(0, 15);
+    const shown = digits ? fa(digits.replace(/\B(?=(\d{3})+(?!\d))/g, '٬')) : '';
+    const caret = amount.selectionStart;
+    const before = caret == null ? digits.length : digitsOf(amount.value.slice(0, caret)).length;
+    if (amount.value !== shown) {
+      amount.value = shown;
+      if (document.activeElement === amount && caret != null) {
+        let seen = 0;
+        let pos = shown.length;
+        for (let i = 0; i < shown.length; i++) {
+          if (digitsOf(shown[i])) seen += 1;
+          if (seen >= before) { pos = i + 1; break; }
+        }
+        if (!before) pos = 0;
+        amount.setSelectionRange(pos, pos);
+      }
+    }
+    const text = words(digits);
+    amountWords.textContent = text;
+    amountWords.hidden = !text;
+  }
+
+  amount.addEventListener('input', paintAmount);
+})();
+</script>
 {% endblock %}

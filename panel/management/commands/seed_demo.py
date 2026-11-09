@@ -116,6 +116,7 @@ class Command(BaseCommand):
                 number=f'KY-1405-{seq}', customer=cust, expert=expert,
                 sold_on=sold_on, settlement=settlement,
                 status='تکمیل شده' if settlement == 'نقدی' else 'در حال پیگیری',
+                sale_amount=sale,
                 commission_paid=paid,
                 note='فاکتور نمونه‌ی کشت‌یار',
             )

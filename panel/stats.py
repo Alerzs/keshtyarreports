@@ -49,14 +49,14 @@ def received_of(invoice):
 
 
 def outstanding_of(invoice):
-    return max(0, int(invoice.sale_amount) - received_of(invoice))
+    return max(0, int(invoice.sale_amount or 0) - int(received_of(invoice)))
 
 
 def cash_due_of(invoice):
-    """بخشی از فاکتور که نه پرداخت شده و نه با چک پوشش داده شده است."""
+    """بخشی از مبلغ کل فروش فاکتور که نه واریز شده و نه با چک پوشش داده شده است."""
     checks = sum(c.amount for c in invoice.checks.all())
     paid = sum(p.amount for p in invoice.payments.all())
-    return max(0, int(invoice.sale_amount) - int(checks) - int(paid))
+    return max(0, int(invoice.sale_amount or 0) - int(checks) - int(paid))
 
 
 def _range_start(key, today):

@@ -94,6 +94,28 @@ class KeshttaminSendTests(TestCase):
         post.assert_not_called()
 
 
+class RequestListPaginationTests(TestCase):
+    def setUp(self):
+        self.admin = Operator.objects.create_user(username='boss', password='secret', full_name='مدیر')
+        set_membership(self.admin, 'manager', False)
+        self.seller = Operator.objects.create_user(username='seller', password='secret', full_name='فروشنده')
+        self.client = Client()
+        self.client.force_login(self.admin)
+        for index in range(21):
+            SaleRequest.objects.create(seller=self.seller, **_sale(customer_name=f'مشتری {index:02d}'))
+
+    def test_lists_twenty_per_page(self):
+        first = self.client.get(reverse('requests'))
+        self.assertEqual(len(first.context['requests']), 20)
+        self.assertContains(first, 'بعدی')
+        second = self.client.get(reverse('requests') + '?status=all&page=2')
+        self.assertEqual(len(second.context['requests']), 1)
+        self.assertContains(second, 'قبلی')
+        pending = self.client.get(reverse('requests') + '?status=pending&page=2')
+        self.assertEqual(len(pending.context['requests']), 1)
+        self.assertContains(pending, 'status=pending&page=1')
+
+
 class SaleApprovalTests(TestCase):
     def setUp(self):
         self.seller = Operator.objects.create_user(username='seller', password='secret', full_name='فروشنده')

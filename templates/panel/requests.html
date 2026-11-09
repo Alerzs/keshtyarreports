@@ -35,4 +35,17 @@
   <p class="card p-8 text-center font-bold text-muted">درخواستی در این فیلتر نیست.</p>
   {% endfor %}
 </div>
+{% if page.paginator.num_pages > 1 %}
+<nav class="mt-4 flex flex-wrap items-center justify-center gap-2" aria-label="صفحه‌های اعلام فروش">
+  {% if page.has_previous %}
+  <a class="btn btn-outline !min-h-9 !px-3" href="?status={{ status }}&page={{ page.previous_page_number }}">قبلی</a>
+  {% endif %}
+  {% for number in page.paginator.page_range %}
+  <a class="grid h-9 min-w-9 place-items-center rounded-lg px-2 text-sm font-extrabold {% if number == page.number %}bg-primary text-white{% else %}border border-line bg-white text-muted hover:text-primary{% endif %}" href="?status={{ status }}&page={{ number }}">{{ number|fa }}</a>
+  {% endfor %}
+  {% if page.has_next %}
+  <a class="btn btn-outline !min-h-9 !px-3" href="?status={{ status }}&page={{ page.next_page_number }}">بعدی</a>
+  {% endif %}
+</nav>
+{% endif %}
 {% endblock %}

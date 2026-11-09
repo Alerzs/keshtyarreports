@@ -329,6 +329,7 @@ def _apply_invoice(invoice, cleaned):
     invoice.settlement = cleaned['settlement']
     invoice.note = cleaned['note']
     invoice.commission_paid = cleaned['commission_paid']
+    invoice.sale_amount = sum(int(line['qty'] * line['unit_price']) for line in cleaned['lines'])
     invoice.purchase_amount = sum(int(line['qty'] * line['unit_cost']) for line in cleaned['lines'])
     invoice.save()
 

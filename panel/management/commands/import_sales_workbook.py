@@ -95,6 +95,7 @@ class Command(BaseCommand):
             customers = self._customers(book, experts)
             invoices = self._invoices(book, customers, experts)
             self._lines(book, invoices)
+            self._fill_blank_sale(invoices)
             self._payments(book, invoices)
             self._checks(book, invoices)
             self._commissions(book, invoices)
@@ -218,6 +219,7 @@ class Command(BaseCommand):
                 settlement=_text(row[7]) or 'نقدی',
                 status=_text(row[13]) or 'تکمیل شده',
                 note=_text(row[14]),
+                sale_amount=_money(row[8]),
                 purchase_amount=_money(row[9]),
             )
             invoices[number] = invoice
@@ -232,6 +234,17 @@ class Command(BaseCommand):
                 unit_price=_money(row[3]),
                 unit_cost=_money(row[4]),
             )
+
+    def _fill_blank_sale(self, invoices):
+        """اگر مبلغ کل فروش در شیت فروش خالی باشد، مجموع مبلغ اقلام روی فاکتور می‌نشیند."""
+        for invoice in invoices.values():
+            if invoice.sale_amount:
+                continue
+            total = sum(int(line.qty * line.unit_price) for line in invoice.lines.all())
+            if not total:
+                continue
+            invoice.sale_amount = total
+            invoice.save(update_fields=['sale_amount'])
 
     def _payments(self, book, invoices):
         for row in book['payments']:
